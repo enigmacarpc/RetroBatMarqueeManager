@@ -643,6 +643,16 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             txtSteamGridDbApiKey.Text = _configManager.GetValue(_config, "SteamGridDB", "SteamGridDbApiKey", "");
             cboSteamGridDbMedia.SelectedItem = _configManager.GetValue(_config, "SteamGridDB", "SteamGridDbMedia", "hero,logo");
             if (cboSteamGridDbMedia.SelectedIndex < 0) cboSteamGridDbMedia.SelectedIndex = 0; // unknown/legacy value -> "hero,logo"
+
+            // SCRAPING TAB - Steam (no key)
+            cboSteamMedia.SelectedItem = _configManager.GetValue(_config, "Steam", "SteamMedia", "hero,logo");
+            if (cboSteamMedia.SelectedIndex < 0) cboSteamMedia.SelectedIndex = 0; // unknown/legacy value -> "hero,logo"
+
+            // SCRAPING TAB - IGDB (Twitch application)
+            txtIgdbClientId.Text = _configManager.GetValue(_config, "IGDB", "IgdbClientId", "");
+            txtIgdbClientSecret.Text = _configManager.GetValue(_config, "IGDB", "IgdbClientSecret", "");
+            cboIgdbMedia.SelectedItem = _configManager.GetValue(_config, "IGDB", "IgdbMedia", "artwork,screenshot");
+            if (cboIgdbMedia.SelectedIndex < 0) cboIgdbMedia.SelectedIndex = 0; // unknown/legacy value -> "artwork,screenshot"
             
             // SCRAPING TAB - ScreenScraper
             txtSSUser.Text = _configManager.GetValue(_config, "ScreenScraper", "ScreenScraperUser", "");
@@ -741,6 +751,14 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             // SCRAPING TAB - SteamGridDB
             _configManager.SetValue(_config, "SteamGridDB", "SteamGridDbApiKey", txtSteamGridDbApiKey.Text.Trim());
             _configManager.SetValue(_config, "SteamGridDB", "SteamGridDbMedia", cboSteamGridDbMedia.SelectedItem?.ToString() ?? "hero,logo");
+
+            // SCRAPING TAB - Steam (no key)
+            _configManager.SetValue(_config, "Steam", "SteamMedia", cboSteamMedia.SelectedItem?.ToString() ?? "hero,logo");
+
+            // SCRAPING TAB - IGDB (Twitch application)
+            _configManager.SetValue(_config, "IGDB", "IgdbClientId", txtIgdbClientId.Text.Trim());
+            _configManager.SetValue(_config, "IGDB", "IgdbClientSecret", txtIgdbClientSecret.Text.Trim());
+            _configManager.SetValue(_config, "IGDB", "IgdbMedia", cboIgdbMedia.SelectedItem?.ToString() ?? "artwork,screenshot");
             
             // SCRAPING TAB - ScreenScraper
             _configManager.SetValue(_config, "ScreenScraper", "ScreenScraperUser", txtSSUser.Text);

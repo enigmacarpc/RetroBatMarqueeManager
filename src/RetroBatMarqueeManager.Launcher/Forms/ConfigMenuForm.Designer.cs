@@ -137,6 +137,16 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.txtSteamGridDbApiKey = new System.Windows.Forms.TextBox();
             this.lblSteamGridDbMedia = new System.Windows.Forms.Label();
             this.cboSteamGridDbMedia = new System.Windows.Forms.ComboBox();
+            this.groupSteam = new System.Windows.Forms.GroupBox();
+            this.lblSteamMedia = new System.Windows.Forms.Label();
+            this.cboSteamMedia = new System.Windows.Forms.ComboBox();
+            this.groupIgdb = new System.Windows.Forms.GroupBox();
+            this.lblIgdbClientId = new System.Windows.Forms.Label();
+            this.txtIgdbClientId = new System.Windows.Forms.TextBox();
+            this.lblIgdbClientSecret = new System.Windows.Forms.Label();
+            this.txtIgdbClientSecret = new System.Windows.Forms.TextBox();
+            this.lblIgdbMedia = new System.Windows.Forms.Label();
+            this.cboIgdbMedia = new System.Windows.Forms.ComboBox();
             this.groupScreenScraper = new System.Windows.Forms.GroupBox();
             this.lblDMDScrapMediaType = new System.Windows.Forms.Label();
             this.lblMPVScrapMediaType = new System.Windows.Forms.Label();
@@ -235,6 +245,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.groupScrapingGeneral.SuspendLayout();
             this.groupArcadeItalia.SuspendLayout();
             this.groupSteamGridDb.SuspendLayout();
+            this.groupSteam.SuspendLayout();
+            this.groupIgdb.SuspendLayout();
             this.groupScreenScraper.SuspendLayout();
             this.tabDMD.SuspendLayout();
             this.flpDMD.SuspendLayout();
@@ -1325,6 +1337,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.flpScraping.Controls.Add(this.groupScrapingGeneral);
             this.flpScraping.Controls.Add(this.groupArcadeItalia);
             this.flpScraping.Controls.Add(this.groupSteamGridDb);
+            this.flpScraping.Controls.Add(this.groupSteam);
+            this.flpScraping.Controls.Add(this.groupIgdb);
             this.flpScraping.Controls.Add(this.groupScreenScraper);
             this.flpScraping.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flpScraping.ForeColor = System.Drawing.Color.White;
@@ -1457,6 +1471,125 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.cboSteamGridDbMedia.Size = new System.Drawing.Size(200, 23);
             this.cboSteamGridDbMedia.TabIndex = 3;
             this.toolTipHint.SetToolTip(this.cboSteamGridDbMedia, "hero = wide background (saved as -fanart), logo = transparent game logo. Both are composed into the marquee. (EN)\nhero = fond large (-fanart), logo = logo transparent. Les deux sont composés dans le marquee. (FR)");
+            //
+            // groupSteam
+            //
+            this.groupSteam.Controls.Add(this.cboSteamMedia);
+            this.groupSteam.Controls.Add(this.lblSteamMedia);
+            this.groupSteam.ForeColor = System.Drawing.Color.White;
+            this.groupSteam.Location = new System.Drawing.Point(13, 331);
+            this.groupSteam.Name = "groupSteam";
+            this.groupSteam.Size = new System.Drawing.Size(762, 65);
+            this.groupSteam.TabIndex = 3;
+            this.groupSteam.TabStop = false;
+            this.groupSteam.Text = "Steam Settings (no API key)";
+            //
+            // lblSteamMedia
+            //
+            this.lblSteamMedia.AutoSize = true;
+            this.lblSteamMedia.Location = new System.Drawing.Point(15, 25);
+            this.lblSteamMedia.Name = "lblSteamMedia";
+            this.lblSteamMedia.Size = new System.Drawing.Size(71, 15);
+            this.lblSteamMedia.TabIndex = 0;
+            this.lblSteamMedia.Text = "Media Type:";
+            //
+            // cboSteamMedia
+            //
+            this.cboSteamMedia.BackColor = System.Drawing.Color.White;
+            this.cboSteamMedia.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboSteamMedia.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cboSteamMedia.ForeColor = System.Drawing.Color.Black;
+            this.cboSteamMedia.FormattingEnabled = true;
+            this.cboSteamMedia.Items.AddRange(new object[] {
+            "hero,logo",
+            "hero",
+            "logo"});
+            this.cboSteamMedia.Location = new System.Drawing.Point(180, 22);
+            this.cboSteamMedia.Name = "cboSteamMedia";
+            this.cboSteamMedia.Size = new System.Drawing.Size(200, 23);
+            this.cboSteamMedia.TabIndex = 1;
+            this.toolTipHint.SetToolTip(this.cboSteamMedia, "Uses Steam's own store and image servers, no key needed. Add 'Steam' to Scraper Priority to use it. hero = wide background (saved as -fanart), logo = game logo. (EN)\nUtilise directement la boutique et les images de Steam, sans clé. Ajoutez 'Steam' à la priorité des scrapers. hero = fond large (-fanart), logo = logo du jeu. (FR)");
+            //
+            // groupIgdb
+            //
+            this.groupIgdb.Controls.Add(this.cboIgdbMedia);
+            this.groupIgdb.Controls.Add(this.lblIgdbMedia);
+            this.groupIgdb.Controls.Add(this.txtIgdbClientSecret);
+            this.groupIgdb.Controls.Add(this.lblIgdbClientSecret);
+            this.groupIgdb.Controls.Add(this.txtIgdbClientId);
+            this.groupIgdb.Controls.Add(this.lblIgdbClientId);
+            this.groupIgdb.ForeColor = System.Drawing.Color.White;
+            this.groupIgdb.Location = new System.Drawing.Point(13, 402);
+            this.groupIgdb.Name = "groupIgdb";
+            this.groupIgdb.Size = new System.Drawing.Size(762, 130);
+            this.groupIgdb.TabIndex = 4;
+            this.groupIgdb.TabStop = false;
+            this.groupIgdb.Text = "IGDB Settings (Twitch application)";
+            //
+            // lblIgdbClientId
+            //
+            this.lblIgdbClientId.AutoSize = true;
+            this.lblIgdbClientId.Location = new System.Drawing.Point(15, 25);
+            this.lblIgdbClientId.Name = "lblIgdbClientId";
+            this.lblIgdbClientId.Size = new System.Drawing.Size(60, 15);
+            this.lblIgdbClientId.TabIndex = 0;
+            this.lblIgdbClientId.Text = "Client ID:";
+            //
+            // txtIgdbClientId
+            //
+            this.txtIgdbClientId.BackColor = System.Drawing.Color.White;
+            this.txtIgdbClientId.ForeColor = System.Drawing.Color.Black;
+            this.txtIgdbClientId.Location = new System.Drawing.Point(180, 22);
+            this.txtIgdbClientId.Name = "txtIgdbClientId";
+            this.txtIgdbClientId.Size = new System.Drawing.Size(543, 23);
+            this.txtIgdbClientId.TabIndex = 1;
+            this.toolTipHint.SetToolTip(this.txtIgdbClientId, "Client ID of your Twitch application (dev.twitch.tv/console). (EN)\nClient ID de votre application Twitch (dev.twitch.tv/console). (FR)");
+            //
+            // lblIgdbClientSecret
+            //
+            this.lblIgdbClientSecret.AutoSize = true;
+            this.lblIgdbClientSecret.Location = new System.Drawing.Point(15, 58);
+            this.lblIgdbClientSecret.Name = "lblIgdbClientSecret";
+            this.lblIgdbClientSecret.Size = new System.Drawing.Size(81, 15);
+            this.lblIgdbClientSecret.TabIndex = 2;
+            this.lblIgdbClientSecret.Text = "Client Secret:";
+            //
+            // txtIgdbClientSecret
+            //
+            this.txtIgdbClientSecret.BackColor = System.Drawing.Color.White;
+            this.txtIgdbClientSecret.ForeColor = System.Drawing.Color.Black;
+            this.txtIgdbClientSecret.Location = new System.Drawing.Point(180, 55);
+            this.txtIgdbClientSecret.Name = "txtIgdbClientSecret";
+            this.txtIgdbClientSecret.PasswordChar = '*';
+            this.txtIgdbClientSecret.Size = new System.Drawing.Size(543, 23);
+            this.txtIgdbClientSecret.TabIndex = 3;
+            this.toolTipHint.SetToolTip(this.txtIgdbClientSecret, "Client Secret of your Twitch application. Keep it private. (EN)\nClient Secret de votre application Twitch. Gardez-le privé. (FR)");
+            //
+            // lblIgdbMedia
+            //
+            this.lblIgdbMedia.AutoSize = true;
+            this.lblIgdbMedia.Location = new System.Drawing.Point(15, 91);
+            this.lblIgdbMedia.Name = "lblIgdbMedia";
+            this.lblIgdbMedia.Size = new System.Drawing.Size(71, 15);
+            this.lblIgdbMedia.TabIndex = 4;
+            this.lblIgdbMedia.Text = "Media Type:";
+            //
+            // cboIgdbMedia
+            //
+            this.cboIgdbMedia.BackColor = System.Drawing.Color.White;
+            this.cboIgdbMedia.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboIgdbMedia.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cboIgdbMedia.ForeColor = System.Drawing.Color.Black;
+            this.cboIgdbMedia.FormattingEnabled = true;
+            this.cboIgdbMedia.Items.AddRange(new object[] {
+            "artwork,screenshot",
+            "artwork",
+            "screenshot"});
+            this.cboIgdbMedia.Location = new System.Drawing.Point(180, 88);
+            this.cboIgdbMedia.Name = "cboIgdbMedia";
+            this.cboIgdbMedia.Size = new System.Drawing.Size(200, 23);
+            this.cboIgdbMedia.TabIndex = 5;
+            this.toolTipHint.SetToolTip(this.cboIgdbMedia, "Order of preference for the wide background (saved as -fanart). IGDB has no game logos, so a lower-priority source can add the logo. Add 'IGDB' to Scraper Priority to use it. (EN)\nOrdre de préférence pour le fond large (-fanart). IGDB n'a pas de logos de jeux : une source de priorité inférieure peut ajouter le logo. Ajoutez 'IGDB' à la priorité des scrapers. (FR)");
             //
             // groupScreenScraper
             //
@@ -2496,6 +2629,10 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.groupArcadeItalia.PerformLayout();
             this.groupSteamGridDb.ResumeLayout(false);
             this.groupSteamGridDb.PerformLayout();
+            this.groupSteam.ResumeLayout(false);
+            this.groupSteam.PerformLayout();
+            this.groupIgdb.ResumeLayout(false);
+            this.groupIgdb.PerformLayout();
             this.groupScreenScraper.ResumeLayout(false);
             this.groupScreenScraper.PerformLayout();
             this.tabDMD.ResumeLayout(false);
@@ -2626,6 +2763,16 @@ namespace RetroBatMarqueeManager.Launcher.Forms
         private System.Windows.Forms.TextBox txtSteamGridDbApiKey;
         private System.Windows.Forms.Label lblSteamGridDbMedia;
         private System.Windows.Forms.ComboBox cboSteamGridDbMedia;
+        private System.Windows.Forms.GroupBox groupSteam;
+        private System.Windows.Forms.Label lblSteamMedia;
+        private System.Windows.Forms.ComboBox cboSteamMedia;
+        private System.Windows.Forms.GroupBox groupIgdb;
+        private System.Windows.Forms.Label lblIgdbClientId;
+        private System.Windows.Forms.TextBox txtIgdbClientId;
+        private System.Windows.Forms.Label lblIgdbClientSecret;
+        private System.Windows.Forms.TextBox txtIgdbClientSecret;
+        private System.Windows.Forms.Label lblIgdbMedia;
+        private System.Windows.Forms.ComboBox cboIgdbMedia;
         private System.Windows.Forms.GroupBox groupScreenScraper;
         private System.Windows.Forms.TextBox txtDMDScrapMediaType;
         private System.Windows.Forms.Label lblDMDScrapMediaType;
