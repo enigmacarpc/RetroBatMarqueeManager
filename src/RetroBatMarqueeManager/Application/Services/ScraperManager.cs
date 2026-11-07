@@ -55,7 +55,16 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (scraper.IsScraping(systemName, gameName, mediaType))
                     {
                         // _logger.LogDebug($"[ScraperManager] {scraperName} is handling the request. Stopping chain.");
-                        return null; 
+                        return null;
+                    }
+
+                    // EN: Scrapers that stage files for the composition flow (e.g. SteamGridDB hero + logo) return no path.
+                    //     Once their media is in place, stop here so lower priorities do not replace it.
+                    // FR: Les scrapers qui déposent des fichiers pour la composition ne renvoient pas de chemin.
+                    //     Une fois les médias en place, on s'arrête ici.
+                    if (scraper.HasStagedMedia(systemName, gameName, gamePath))
+                    {
+                        return null;
                     }
                 }
                 else

@@ -273,6 +273,13 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         public string ArcadeItaliaUrl => GetValue("ArcadeItaliaUrl", "http://adb.arcadeitalia.net");
         public string ArcadeItaliaMediaType => GetValue("ArcadeItaliaMediaType", "marquee"); // marquee, snapshot, title, cabinet
 
+        // SteamGridDB Settings (API key from https://www.steamgriddb.com/profile/preferences/api)
+        public string SteamGridDbApiKey => GetValue("SteamGridDbApiKey", "");
+        public string SteamGridDbMedia => GetValue("SteamGridDbMedia", "hero,logo"); // hero, logo or hero,logo
+
+        // Steam Settings (no key: Steam store search + Steam image CDN)
+        public string SteamMedia => GetValue("SteamMedia", "hero,logo"); // hero, logo or hero,logo
+
           // Logic Flags
         // MarqueeAutoGeneration moved to alias below
         // ... (Other properties remain the same) ...
@@ -661,8 +668,15 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 // ArcadeItalia (NEW)
                 { "ArcadeItaliaUrl", "http://adb.arcadeitalia.net" },
                 { "ArcadeItaliaMediaType", "marquee" },
-                
-                // IPC  
+
+                // SteamGridDB (NEW)
+                { "SteamGridDbApiKey", "" },
+                { "SteamGridDbMedia", "hero,logo" },
+
+                // Steam (NEW, keyless)
+                { "SteamMedia", "hero,logo" },
+
+                // IPC
                 { "ScreenNumber", "1" },
                 { "HwDecoding", "no" },
                 
@@ -742,6 +756,13 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 // ArcadeItalia
                 _settings["ArcadeItaliaUrl"] = "http://adb.arcadeitalia.net";
                 _settings["ArcadeItaliaMediaType"] = "marquee";
+
+                // SteamGridDB
+                _settings["SteamGridDbApiKey"] = "";
+                _settings["SteamGridDbMedia"] = "hero,logo";
+
+                // Steam
+                _settings["SteamMedia"] = "hero,logo";
 
                 // RetroAchievements
                 _settings["RetroAchievementsWebApiKey"] = "";
@@ -850,7 +871,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("[ScrapersSource]");
                 sb.AppendLine("; Master switch for scraping (true/false)");
                 WriteKey(sb, "MarqueeAutoScraping", "false");
-                sb.AppendLine("; Order of usage for scrapers (ScreenScraper, arcadeitalia)");
+                sb.AppendLine("; Order of usage for scrapers (ScreenScraper, arcadeitalia, SteamGridDB, Steam)");
                 WriteKey(sb, "PrioritySource", "");
 
                 // --- [arcadeitalia] ---
@@ -859,6 +880,23 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 WriteKey(sb, "ArcadeItaliaUrl", "http://adb.arcadeitalia.net");
                 sb.AppendLine("; Options: marquee, snapshot, title, cabinet");
                 WriteKey(sb, "ArcadeItaliaMediaType", "marquee");
+
+                // --- [SteamGridDB] ---
+                sb.AppendLine();
+                sb.AppendLine("[SteamGridDB]");
+                sb.AppendLine("; Personal API key: https://www.steamgriddb.com/profile/preferences/api");
+                WriteKey(sb, "SteamGridDbApiKey", "");
+                sb.AppendLine("; What to download: hero, logo or hero,logo. Saved as <rom>-fanart (hero) and <rom> (logo)");
+                sb.AppendLine("; so the normal Fanart + Logo composition builds the marquee (needs MarqueeCompose=true, ComposeMedia=fanart).");
+                WriteKey(sb, "SteamGridDbMedia", "hero,logo");
+
+                // --- [Steam] ---
+                sb.AppendLine();
+                sb.AppendLine("[Steam]");
+                sb.AppendLine("; Keyless: finds the game on Steam's store search, then downloads its hero and logo from Steam's image CDN.");
+                sb.AppendLine("; What to download: hero, logo or hero,logo. Saved as <rom>-fanart (hero) and <rom> (logo)");
+                sb.AppendLine("; so the normal Fanart + Logo composition builds the marquee (needs MarqueeCompose=true, ComposeMedia=fanart).");
+                WriteKey(sb, "SteamMedia", "hero,logo");
 
                 // --- [ScreenScraper] ---
                 sb.AppendLine();
@@ -958,7 +996,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
                     "MPVScrapMediaType", "DMDScrapMediaType", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
-                    "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "MarqueeRetroAchievementsDisplayTarget",
+                    "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",
                     "MpvRetroAchievementsNotifications", "DmdRetroAchievementsNotifications",
                     "HwDecoding"

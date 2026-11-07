@@ -53,6 +53,11 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         // ArcadeItalia Settings
         string ArcadeItaliaUrl { get; }
         string ArcadeItaliaMediaType { get; }
+        // SteamGridDB Settings
+        string SteamGridDbApiKey { get; }
+        string SteamGridDbMedia { get; } // "hero", "logo" or "hero,logo"
+        // Steam Settings (keyless: Steam store search + Steam image CDN)
+        string SteamMedia { get; } // "hero", "logo" or "hero,logo"
 
         string ScreenScraperUser { get; }
         string ScreenScraperPass { get; }

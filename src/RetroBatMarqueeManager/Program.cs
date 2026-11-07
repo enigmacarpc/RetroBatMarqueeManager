@@ -164,6 +164,12 @@ public class Program
                     services.AddSingleton<ArcadeItaliaScraperService>();
                     services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<ArcadeItaliaScraperService>());
 
+                    services.AddSingleton<SteamGridDbScraperService>();
+                    services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<SteamGridDbScraperService>());
+
+                    services.AddSingleton<SteamScraperService>();
+                    services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<SteamScraperService>());
+
                     services.AddSingleton<IScraperManager, ScraperManager>();
 
                     // EN: RetroAchievements (API Client + Service) / FR: RetroAchievements (Client API + Service)

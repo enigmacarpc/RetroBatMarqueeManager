@@ -638,6 +638,11 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             // SCRAPING TAB - ArcadeItalia
             txtArcadeItaliaUrl.Text = _configManager.GetValue(_config, "arcadeitalia", "ArcadeItaliaUrl", "http://adb.arcadeitalia.net");
             cboArcadeItaliaMediaType.SelectedItem = _configManager.GetValue(_config, "arcadeitalia", "ArcadeItaliaMediaType", "marquee");
+
+            // SCRAPING TAB - SteamGridDB
+            txtSteamGridDbApiKey.Text = _configManager.GetValue(_config, "SteamGridDB", "SteamGridDbApiKey", "");
+            cboSteamGridDbMedia.SelectedItem = _configManager.GetValue(_config, "SteamGridDB", "SteamGridDbMedia", "hero,logo");
+            if (cboSteamGridDbMedia.SelectedIndex < 0) cboSteamGridDbMedia.SelectedIndex = 0; // unknown/legacy value -> "hero,logo"
             
             // SCRAPING TAB - ScreenScraper
             txtSSUser.Text = _configManager.GetValue(_config, "ScreenScraper", "ScreenScraperUser", "");
@@ -732,6 +737,10 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             // SCRAPING TAB - ArcadeItalia
             _configManager.SetValue(_config, "arcadeitalia", "ArcadeItaliaUrl", txtArcadeItaliaUrl.Text);
             _configManager.SetValue(_config, "arcadeitalia", "ArcadeItaliaMediaType", cboArcadeItaliaMediaType.SelectedItem?.ToString() ?? "marquee");
+
+            // SCRAPING TAB - SteamGridDB
+            _configManager.SetValue(_config, "SteamGridDB", "SteamGridDbApiKey", txtSteamGridDbApiKey.Text.Trim());
+            _configManager.SetValue(_config, "SteamGridDB", "SteamGridDbMedia", cboSteamGridDbMedia.SelectedItem?.ToString() ?? "hero,logo");
             
             // SCRAPING TAB - ScreenScraper
             _configManager.SetValue(_config, "ScreenScraper", "ScreenScraperUser", txtSSUser.Text);

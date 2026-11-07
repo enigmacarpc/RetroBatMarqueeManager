@@ -132,6 +132,11 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.lblArcadeItaliaMediaType = new System.Windows.Forms.Label();
             this.txtArcadeItaliaUrl = new System.Windows.Forms.TextBox();
             this.lblArcadeItaliaUrl = new System.Windows.Forms.Label();
+            this.groupSteamGridDb = new System.Windows.Forms.GroupBox();
+            this.lblSteamGridDbApiKey = new System.Windows.Forms.Label();
+            this.txtSteamGridDbApiKey = new System.Windows.Forms.TextBox();
+            this.lblSteamGridDbMedia = new System.Windows.Forms.Label();
+            this.cboSteamGridDbMedia = new System.Windows.Forms.ComboBox();
             this.groupScreenScraper = new System.Windows.Forms.GroupBox();
             this.lblDMDScrapMediaType = new System.Windows.Forms.Label();
             this.lblMPVScrapMediaType = new System.Windows.Forms.Label();
@@ -229,6 +234,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.flpScraping.SuspendLayout();
             this.groupScrapingGeneral.SuspendLayout();
             this.groupArcadeItalia.SuspendLayout();
+            this.groupSteamGridDb.SuspendLayout();
             this.groupScreenScraper.SuspendLayout();
             this.tabDMD.SuspendLayout();
             this.flpDMD.SuspendLayout();
@@ -1318,6 +1324,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.flpScraping.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(45)))), ((int)(((byte)(48)))));
             this.flpScraping.Controls.Add(this.groupScrapingGeneral);
             this.flpScraping.Controls.Add(this.groupArcadeItalia);
+            this.flpScraping.Controls.Add(this.groupSteamGridDb);
             this.flpScraping.Controls.Add(this.groupScreenScraper);
             this.flpScraping.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flpScraping.ForeColor = System.Drawing.Color.White;
@@ -1390,9 +1397,69 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.lblArcadeItaliaUrl.Size = new System.Drawing.Size(31, 15);
             this.lblArcadeItaliaUrl.TabIndex = 0;
             this.lblArcadeItaliaUrl.Text = "URL:";
-            // 
+            //
+            // groupSteamGridDb
+            //
+            this.groupSteamGridDb.Controls.Add(this.cboSteamGridDbMedia);
+            this.groupSteamGridDb.Controls.Add(this.lblSteamGridDbMedia);
+            this.groupSteamGridDb.Controls.Add(this.txtSteamGridDbApiKey);
+            this.groupSteamGridDb.Controls.Add(this.lblSteamGridDbApiKey);
+            this.groupSteamGridDb.ForeColor = System.Drawing.Color.White;
+            this.groupSteamGridDb.Location = new System.Drawing.Point(13, 225);
+            this.groupSteamGridDb.Name = "groupSteamGridDb";
+            this.groupSteamGridDb.Size = new System.Drawing.Size(762, 100);
+            this.groupSteamGridDb.TabIndex = 2;
+            this.groupSteamGridDb.TabStop = false;
+            this.groupSteamGridDb.Text = "SteamGridDB Settings";
+            //
+            // lblSteamGridDbApiKey
+            //
+            this.lblSteamGridDbApiKey.AutoSize = true;
+            this.lblSteamGridDbApiKey.Location = new System.Drawing.Point(15, 25);
+            this.lblSteamGridDbApiKey.Name = "lblSteamGridDbApiKey";
+            this.lblSteamGridDbApiKey.Size = new System.Drawing.Size(51, 15);
+            this.lblSteamGridDbApiKey.TabIndex = 0;
+            this.lblSteamGridDbApiKey.Text = "API Key:";
+            //
+            // txtSteamGridDbApiKey
+            //
+            this.txtSteamGridDbApiKey.BackColor = System.Drawing.Color.White;
+            this.txtSteamGridDbApiKey.ForeColor = System.Drawing.Color.Black;
+            this.txtSteamGridDbApiKey.Location = new System.Drawing.Point(180, 22);
+            this.txtSteamGridDbApiKey.Name = "txtSteamGridDbApiKey";
+            this.txtSteamGridDbApiKey.PasswordChar = '*';
+            this.txtSteamGridDbApiKey.Size = new System.Drawing.Size(543, 23);
+            this.txtSteamGridDbApiKey.TabIndex = 1;
+            this.toolTipHint.SetToolTip(this.txtSteamGridDbApiKey, "Personal API key from steamgriddb.com (Preferences > API). (EN)\nClé API personnelle de steamgriddb.com (Préférences > API). (FR)");
+            //
+            // lblSteamGridDbMedia
+            //
+            this.lblSteamGridDbMedia.AutoSize = true;
+            this.lblSteamGridDbMedia.Location = new System.Drawing.Point(15, 58);
+            this.lblSteamGridDbMedia.Name = "lblSteamGridDbMedia";
+            this.lblSteamGridDbMedia.Size = new System.Drawing.Size(71, 15);
+            this.lblSteamGridDbMedia.TabIndex = 2;
+            this.lblSteamGridDbMedia.Text = "Media Type:";
+            //
+            // cboSteamGridDbMedia
+            //
+            this.cboSteamGridDbMedia.BackColor = System.Drawing.Color.White;
+            this.cboSteamGridDbMedia.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboSteamGridDbMedia.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cboSteamGridDbMedia.ForeColor = System.Drawing.Color.Black;
+            this.cboSteamGridDbMedia.FormattingEnabled = true;
+            this.cboSteamGridDbMedia.Items.AddRange(new object[] {
+            "hero,logo",
+            "hero",
+            "logo"});
+            this.cboSteamGridDbMedia.Location = new System.Drawing.Point(180, 55);
+            this.cboSteamGridDbMedia.Name = "cboSteamGridDbMedia";
+            this.cboSteamGridDbMedia.Size = new System.Drawing.Size(200, 23);
+            this.cboSteamGridDbMedia.TabIndex = 3;
+            this.toolTipHint.SetToolTip(this.cboSteamGridDbMedia, "hero = wide background (saved as -fanart), logo = transparent game logo. Both are composed into the marquee. (EN)\nhero = fond large (-fanart), logo = logo transparent. Les deux sont composés dans le marquee. (FR)");
+            //
             // groupScreenScraper
-            // 
+            //
             this.groupScreenScraper.Controls.Add(this.txtDMDScrapMediaType);
             this.groupScreenScraper.Controls.Add(this.lblDMDScrapMediaType);
             this.groupScreenScraper.Controls.Add(this.txtMPVScrapMediaType);
@@ -2427,6 +2494,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.groupScrapingGeneral.PerformLayout();
             this.groupArcadeItalia.ResumeLayout(false);
             this.groupArcadeItalia.PerformLayout();
+            this.groupSteamGridDb.ResumeLayout(false);
+            this.groupSteamGridDb.PerformLayout();
             this.groupScreenScraper.ResumeLayout(false);
             this.groupScreenScraper.PerformLayout();
             this.tabDMD.ResumeLayout(false);
@@ -2552,6 +2621,11 @@ namespace RetroBatMarqueeManager.Launcher.Forms
         private System.Windows.Forms.Label lblArcadeItaliaMediaType;
         private System.Windows.Forms.TextBox txtArcadeItaliaUrl;
         private System.Windows.Forms.Label lblArcadeItaliaUrl;
+        private System.Windows.Forms.GroupBox groupSteamGridDb;
+        private System.Windows.Forms.Label lblSteamGridDbApiKey;
+        private System.Windows.Forms.TextBox txtSteamGridDbApiKey;
+        private System.Windows.Forms.Label lblSteamGridDbMedia;
+        private System.Windows.Forms.ComboBox cboSteamGridDbMedia;
         private System.Windows.Forms.GroupBox groupScreenScraper;
         private System.Windows.Forms.TextBox txtDMDScrapMediaType;
         private System.Windows.Forms.Label lblDMDScrapMediaType;

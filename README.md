@@ -86,7 +86,18 @@ Edit `config.ini` in the plugin folder to customize behavior.
 
 *   **Scraping Settings**:
     *   `MarqueeAutoScraping`: Enable automatic media scraping. **Priority**: Scraped media takes precedence over default images found in the ROM folder.
-    *   `PrioritySource`: Order of preference for scrapers (e.g. `ScreenScraper, arcadeitalia`).
+    *   `PrioritySource`: Order of preference for scrapers (e.g. `ScreenScraper, arcadeitalia, SteamGridDB, Steam`).
+    *   **Steam** (`[Steam]` section, source name `Steam`): no API key needed. Finds the game with Steam's public store search, then downloads its **hero** (`library_hero.jpg`) and **logo** (`logo.png`) from Steam's image CDN.
+        *   `SteamMedia`: `hero,logo` (default), `hero` or `logo`.
+        *   Files are staged exactly like SteamGridDB (`<rom>-fanart` and `<rom>`), so it needs the same `MarqueeCompose=true` and `ComposeMedia=fanart`. Existing files are never overwritten.
+        *   Games are matched by name. Games not found are remembered in `_cache\steam_failed.json` inside your medias folder; delete that file to retry them. Look for `[Steam]` lines in the log to see what matched.
+        *   Older Steam games publish artwork at the standard CDN paths; some newer ones use hashed file names that this scraper does not try, so they may log "No Hero image available on Steam's CDN" and fall back to the next scraper.
+    *   **SteamGridDB** (`[SteamGridDB]` section): downloads a wide **hero** and a transparent **logo** for a game using a free personal API key (<https://www.steamgriddb.com/profile/preferences/api>).
+        *   `SteamGridDbApiKey`: your API key (required).
+        *   `SteamGridDbMedia`: `hero,logo` (default), `hero` or `logo`.
+        *   The hero is saved as `<rom>-fanart` and the logo as `<rom>` in the same folders the Fanart + Logo composition already reads (`MarqueeImagePath\<system>\`), so the marquee is composed automatically. Requires `MarqueeCompose=true` and `ComposeMedia=fanart`. Existing files are never overwritten.
+        *   Games are matched by name. Games not found are remembered in `_cache\steamgriddb_failed.json` inside your medias folder; delete that file to retry them.
+        *   When SteamGridDB has staged the media for a game, lower-priority scrapers are skipped for that game.
 
 ## RetroAchievements Integration
 
