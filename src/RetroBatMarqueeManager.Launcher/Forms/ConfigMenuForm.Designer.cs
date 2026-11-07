@@ -1584,12 +1584,13 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.cboIgdbMedia.Items.AddRange(new object[] {
             "artwork,screenshot",
             "artwork",
-            "screenshot"});
+            "screenshot",
+            "hero"});
             this.cboIgdbMedia.Location = new System.Drawing.Point(180, 88);
             this.cboIgdbMedia.Name = "cboIgdbMedia";
             this.cboIgdbMedia.Size = new System.Drawing.Size(200, 23);
             this.cboIgdbMedia.TabIndex = 5;
-            this.toolTipHint.SetToolTip(this.cboIgdbMedia, "Order of preference for the wide background (saved as -fanart). IGDB has no game logos, so a lower-priority source can add the logo. Add 'IGDB' to Scraper Priority to use it. (EN)\nOrdre de préférence pour le fond large (-fanart). IGDB n'a pas de logos de jeux : une source de priorité inférieure peut ajouter le logo. Ajoutez 'IGDB' à la priorité des scrapers. (FR)");
+            this.toolTipHint.SetToolTip(this.cboIgdbMedia, "Order of preference for the wide background (saved as -fanart). 'hero' = best wide image (artwork first, then screenshot), same as the default. IGDB has no game logos, so a lower-priority source can add the logo. Add 'IGDB' to Scraper Priority to use it. (EN)\nOrdre de préférence pour le fond large (-fanart). 'hero' = meilleure image large (artwork puis capture d'écran), comme par défaut. IGDB n'a pas de logos de jeux : une source de priorité inférieure peut ajouter le logo. Ajoutez 'IGDB' à la priorité des scrapers. (FR)");
             //
             // groupScreenScraper
             //

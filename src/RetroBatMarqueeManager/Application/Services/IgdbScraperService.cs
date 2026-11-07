@@ -130,6 +130,8 @@ namespace RetroBatMarqueeManager.Application.Services
             kinds = (_config.IgdbMedia ?? "")
                 .Split(new[] { ',', ';', '+', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(k => k.ToLowerInvariant())
+                // EN: "hero" = best wide image: artworks first, then screenshots (same as the default order).
+                .SelectMany(k => k == "hero" ? new[] { "artwork", "screenshot" } : new[] { k })
                 .Where(k => k == "artwork" || k == "screenshot")
                 .Distinct()
                 .ToArray();

@@ -920,7 +920,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("; and paste its Client ID and Client Secret below. Do not share this file with the secret in it.");
                 sb.AppendLine("; IGDB has no game logos: it only provides the wide hero (saved as <rom>-fanart). A lower-priority source");
                 sb.AppendLine("; such as Steam or SteamGridDB can still add the logo. Without a logo, the system logo is used.");
-                sb.AppendLine("; IgdbMedia = preference order: artwork,screenshot (default), artwork or screenshot");
+                sb.AppendLine("; IgdbMedia = preference order: artwork,screenshot (default), artwork, screenshot or hero (hero = artwork first, then screenshot)");
                 WriteKey(sb, "IgdbClientId", "");
                 WriteKey(sb, "IgdbClientSecret", "");
                 WriteKey(sb, "IgdbMedia", "artwork,screenshot");
