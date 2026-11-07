@@ -24,14 +24,18 @@ namespace RetroBatMarqueeManager.Application.Services
         private string _lastTitle = "";
         private string _lastRom = "";
 
+        private readonly ScrapeOverrideService _ownImages;
+
         public MarqueeFileFinderService(
             IConfigService config,
             IEsSettingsService esSettings,
             ImageConversionService imageService,
             OffsetStorageService offsetService,
             IScraperManager scraperManager,
+            ScrapeOverrideService ownImages,
             ILogger<MarqueeFileFinderService> logger)
         {
+            _ownImages = ownImages;
             _config = config;
             _esSettings = esSettings;
             _imageService = imageService;
@@ -526,6 +530,15 @@ namespace RetroBatMarqueeManager.Application.Services
                     {
                          _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + Game Logo {basicRaw}");
                          return _imageService.GenerateComposition(backgroundInfo, basicRaw, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                    }
+
+                    // EN: No game logo yet: use the user's own logo from roms\{system} (gamelist.xml <wheel>/<logo>, per system)
+                    //     before falling back to the system logo (e.g. the Xbox 360 logo).
+                    var ownLogo = _ownImages.FindOwnLogo(system, romFileName);
+                    if (ownLogo != null && !string.Equals(ownLogo, backgroundInfo, StringComparison.OrdinalIgnoreCase))
+                    {
+                         _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + own logo {ownLogo}");
+                         return _imageService.GenerateComposition(backgroundInfo, ownLogo, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
                     }
 
                     var systemLogoRaw = FindSystemMarquee(system, raw: true);

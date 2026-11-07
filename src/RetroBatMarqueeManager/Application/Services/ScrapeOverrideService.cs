@@ -256,8 +256,8 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private static readonly string[] HeroMediaDirs = { "images", "media\\fanart", "media\\fanarts", "fanart", "downloaded_images" };
         private static readonly string[] LogoMediaDirs = { "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos", "downloaded_images" };
-        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero", "" };
-        private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo", "" };
+        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero" };
+        private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo" };
 
         /// <summary>
         /// EN: Copy the user's own hero/logo into the staging folder as {rom}-fanart / {rom}. Looks in
@@ -280,36 +280,66 @@ namespace RetroBatMarqueeManager.Application.Services
             return count;
         }
 
+        /// <summary>
+        /// EN: The user's own logo for a game from roms\{system} (gamelist.xml wheel/logo tag first, then usual folders), or null.
+        /// Used directly (not copied) when composing a marquee that has no game logo yet.
+        /// </summary>
+        public string? FindOwnLogo(string systemName, string romName)
+        {
+            try
+            {
+                string systemDir = Path.Combine(_config.RomsPath, systemName);
+                if (!Directory.Exists(systemDir)) return null;
+                var entry = ReadGamelistEntry(systemDir, romName);
+                return FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo"), LogoMediaDirs, LogoSuffixes, romName);
+            }
+            catch { return null; }
+        }
+
         // EN: Tag -> relative/absolute path from the matching <game> in roms\<system>\gamelist.xml. Empty if none.
+        private readonly Dictionary<string, (DateTime Stamp, Dictionary<string, Dictionary<string, string>> Games)> _gamelists
+            = new Dictionary<string, (DateTime, Dictionary<string, Dictionary<string, string>>)>(StringComparer.OrdinalIgnoreCase);
+
         private Dictionary<string, string> ReadGamelistEntry(string systemDir, string romName)
         {
-            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var empty = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 string file = Path.Combine(systemDir, "gamelist.xml");
-                if (!File.Exists(file)) return result;
+                if (!File.Exists(file)) return empty;
+                var stamp = File.GetLastWriteTimeUtc(file);
 
-                var doc = System.Xml.Linq.XDocument.Load(file);
-                foreach (var game in doc.Descendants("game"))
+                lock (_lock)
                 {
-                    string? path = game.Element("path")?.Value;
-                    if (string.IsNullOrWhiteSpace(path)) continue;
-                    string stem = Path.GetFileNameWithoutExtension(path.Replace('/', '\\'));
-                    if (!stem.Equals(romName, StringComparison.OrdinalIgnoreCase)) continue;
-
-                    foreach (var tag in new[] { "fanart", "wheel", "logo" })
+                    // EN: Parsed once per system and reloaded only when the file changes (browsing asks for every game).
+                    if (!_gamelists.TryGetValue(file, out var cached) || cached.Stamp != stamp)
                     {
-                        var v = game.Element(tag)?.Value?.Trim();
-                        if (!string.IsNullOrEmpty(v)) result[tag] = v;
+                        var games = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+                        var doc = System.Xml.Linq.XDocument.Load(file);
+                        foreach (var game in doc.Descendants("game"))
+                        {
+                            string? path = game.Element("path")?.Value;
+                            if (string.IsNullOrWhiteSpace(path)) continue;
+                            string stem = Path.GetFileNameWithoutExtension(path.Replace('/', '\\'));
+                            var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var tag in new[] { "fanart", "wheel", "logo" })
+                            {
+                                var v = game.Element(tag)?.Value?.Trim();
+                                if (!string.IsNullOrEmpty(v)) tags[tag] = v;
+                            }
+                            if (tags.Count > 0) games[stem] = tags;
+                        }
+                        cached = (stamp, games);
+                        _gamelists[file] = cached;
                     }
-                    break;
+                    return cached.Games.TryGetValue(romName, out var entry) ? entry : empty;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning($"[Overrides] Could not read gamelist.xml: {ex.Message}");
+                return empty;
             }
-            return result;
         }
 
         private string? FirstExisting(string systemDir, string? listed, string[] dirs, string[] suffixes, string romName)
