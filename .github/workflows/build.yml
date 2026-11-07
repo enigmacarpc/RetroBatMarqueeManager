@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [steam-scrapers]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # The main project copies libmpv-2.dll from tools\mpv-dev-*; those folders only exist after extracting the archive.
+      - name: Extract libmpv
+        shell: bash
+        run: |
+          7z x tools/mpv-dev-x86_64_v2_v3.7z -otools -y
+          ls tools
+          test -f "tools/mpv-dev-x86_64-20251228-git-a58dd8a/libmpv-2.dll"
+          test -f "tools/mpv-dev-x86_64-v3-20251228-git-a58dd8a/libmpv-2.dll"
+
+      - name: Build
+        run: dotnet build RetroBatMarqueeManager.sln -c Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RetroBatMarqueeManager-Release
+          path: RetroBatMarqueeManager/bin/Release/
