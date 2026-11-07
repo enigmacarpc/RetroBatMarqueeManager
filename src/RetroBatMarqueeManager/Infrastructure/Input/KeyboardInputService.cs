@@ -15,6 +15,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
         public event Action? OnTogglePlayback;
         public event Action? OnTrimStart;
         public event Action? OnTrimEnd;
+        public event Action? OnDiscardScrape;
+        private bool _wasRDown = false;
 
         // Detection rate limiter (Debounce)
         private DateTime _lastInputTime = DateTime.MinValue;
@@ -55,6 +57,16 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
             bool ctrlPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
             bool altPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
             bool shiftPressed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+
+            // EN: Ctrl+Shift+R = reject the scraped hero/logo of the current game (one-shot).
+            // FR: Ctrl+Shift+R = rejeter le hero/logo scrapé du jeu courant (une seule fois).
+            bool isRDown = (GetAsyncKeyState(0x52) & 0x8000) != 0; // VK_R
+            if (ctrlPressed && shiftPressed && !altPressed && isRDown && !_wasRDown)
+            {
+                OnDiscardScrape?.Invoke();
+                _lastInputTime = DateTime.Now;
+            }
+            _wasRDown = isRDown;
             
             // EN: Check Ctrl+V for video adjustment mode (before other checks)
             // FR: Vérifier Ctrl+V pour mode ajustement vidéo (avant autres vérifications)

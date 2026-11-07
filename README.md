@@ -102,6 +102,11 @@ Edit `config.ini` in the plugin folder to customize behavior.
         *   `SteamGridDbMedia`: `hero,logo` (default), `hero` or `logo`.
         *   The hero is saved as `<rom>-fanart` and the logo as `<rom>` in the same folders the Fanart + Logo composition already reads (`MarqueeImagePath\<system>\`), so the marquee is composed automatically. Requires `MarqueeCompose=true` and `ComposeMedia=fanart`. Existing files are never overwritten.
         *   Games are matched by name. Games not found are remembered in `_cache\steamgriddb_failed.json` inside your medias folder; delete that file to retry them.
+    *   **Fixing a bad or missing hero/logo by hand** (Steam, IGDB, SteamGridDB):
+        *   **Use your own image:** save it as `<rom>-fanart.png` (hero) and `<rom>.png` (logo) in `<medias>\<system>\` (or in RetroBat's `roms\<system>\images\` as `<rom>-fanart.*`). Existing files are never overwritten, and the composed picture is rebuilt automatically when a source image changes.
+        *   **Throw away a bad result:** select the game and press **Ctrl+Shift+R**. Its staged hero/logo are moved to `<medias>\_cache\discarded\<system>\` (recoverable) and the scrapers will not fetch that game again.
+        *   **Fix a wrong match:** edit `scraper_overrides.ini` (created next to `config.ini`). Add a section `[system\rom_name]` with `Steam=<app id>`, `IGDB=<game id>`, `SteamGridDB=<game id>` and/or `Name=<search name>`. Saving the file gives that game one fresh attempt, even after Ctrl+Shift+R or a "not found". If a wrong image is already saved, press Ctrl+Shift+R first.
+        *   Typical replace flow: Ctrl+Shift+R on the game, add its correct ID to `scraper_overrides.ini`, save.
         *   When SteamGridDB has staged the media for a game, lower-priority scrapers are skipped for that game.
 
 ## RetroAchievements Integration

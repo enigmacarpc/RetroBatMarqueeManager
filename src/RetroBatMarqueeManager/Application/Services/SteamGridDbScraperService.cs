@@ -40,6 +40,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private readonly ILogger<SteamGridDbScraperService> _logger;
         private readonly IConfigService _config;
+        private readonly ScrapeOverrideService _overrides;
         private readonly string _failedPath;
 
         private static readonly HttpClient _http;
@@ -57,10 +58,11 @@ namespace RetroBatMarqueeManager.Application.Services
             _http.DefaultRequestHeaders.UserAgent.ParseAdd("RetroBatMarqueeManager/1.0");
         }
 
-        public SteamGridDbScraperService(ILogger<SteamGridDbScraperService> logger, IConfigService config)
+        public SteamGridDbScraperService(ILogger<SteamGridDbScraperService> logger, IConfigService config, ScrapeOverrideService overrides)
         {
             _logger = logger;
             _config = config;
+            _overrides = overrides;
             _failedPath = Path.Combine(_config.MarqueeImagePath, "_cache", "steamgriddb_failed.json");
             LoadFailed();
         }
@@ -213,7 +215,10 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 _logger.LogInformation($"[SteamGridDB] Starting scrape for '{gameName}' ({systemName}) [hero:{needHero} logo:{needLogo}]...");
 
-                int? gameId = await FindGameIdAsync(gameName);
+                var ov = _overrides.Get(systemName, romName);
+                if (ov != null && ov.HasDataFor(Name)) _overrides.MarkTried(Name, systemName, romName);
+
+                int? gameId = ov?.NumericIdFor(Name) ?? await FindGameIdAsync(gameName, ov);
                 if (gameId == null)
                 {
                     _logger.LogWarning($"[SteamGridDB] No matching game found for '{gameName}'.");
@@ -269,9 +274,11 @@ namespace RetroBatMarqueeManager.Application.Services
 
         // ------------------------------------------------------------------ SteamGridDB API
 
-        private async Task<int?> FindGameIdAsync(string gameName)
+        private async Task<int?> FindGameIdAsync(string gameName, GameOverride? ov = null)
         {
-            foreach (var term in SearchTerms(gameName))
+            // EN: An explicit Name override is trusted: the top result is used.
+            bool trust = !string.IsNullOrWhiteSpace(ov?.Name);
+            foreach (var term in SearchTerms(trust ? ov!.Name! : gameName))
             {
                 using var doc = await GetJsonAsync($"{ApiBase}/search/autocomplete/{Uri.EscapeDataString(term)}");
                 if (doc == null) continue;
@@ -283,6 +290,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 foreach (var item in data.EnumerateArray())
                 {
                     if (!item.TryGetProperty("id", out var idEl) || !idEl.TryGetInt32(out var id)) continue;
+                    if (trust) return id;
                     string name = item.TryGetProperty("name", out var nameEl) ? (nameEl.GetString() ?? "") : "";
                     string norm = Normalize(name);
                     if (norm.Length == 0) continue;
@@ -485,6 +493,8 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private bool IsFailed(Asset asset, string systemName, string romName)
         {
+            if (_overrides.ShouldBypass(Name, systemName, romName)) return false; // fresh attempt after an override edit
+            if (_overrides.IsRejected(systemName, romName)) return true;          // discarded with Ctrl+Shift+R
             lock (_failedLock) { return _failed.Contains(FailKey(asset, systemName, romName)); }
         }
 

@@ -2001,6 +2001,13 @@ namespace RetroBatMarqueeManager.Application.Services
                     // EN: Validate cached file has same offsets as current request
                     // FR: Valider que le fichier en cache a les mÃªmes offsets que la requÃªte actuelle
                     bool offsetsMatch = ValidateOffsetMetadata(targetPath, offsetX, offsetY, fanartScale, logoOffsetX, logoOffsetY, logoScale);
+                    // EN: Also require the source images to be unchanged (user swapped/replaced a hero or logo).
+                    // Cache files made before this check have no sidecar and are rebuilt once.
+                    if (offsetsMatch && !SourceSignatureMatches(targetPath, fanartPath, logoPath))
+                    {
+                        _logger.LogInformation($"[CACHE INVALID] Source image changed: {simpleName}");
+                        offsetsMatch = false;
+                    }
                     
                     if (offsetsMatch)
                     {
@@ -2232,6 +2239,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (!isPreview)
                     {
                         SaveOffsetMetadata(targetPath, offsetX, offsetY, fanartScale, logoOffsetX, logoOffsetY, logoScale);
+                        WriteSourceSignature(targetPath, fanartPath, logoPath);
                     }
                     
                     return targetPath;
@@ -2429,6 +2437,35 @@ namespace RetroBatMarqueeManager.Application.Services
             }
         }
     
+    private static string BuildSourceSignature(string fanartPath, string logoPath)
+    {
+        string One(string p)
+        {
+            var fi = new FileInfo(p);
+            return $"{fi.FullName}|{fi.Length}|{fi.LastWriteTimeUtc.Ticks}";
+        }
+        return One(fanartPath) + "\n" + One(logoPath);
+    }
+
+    private static string SourceSignaturePath(string composedFilePath) => composedFilePath + ".src";
+
+    private bool SourceSignatureMatches(string composedFilePath, string fanartPath, string logoPath)
+    {
+        try
+        {
+            var sig = SourceSignaturePath(composedFilePath);
+            if (!File.Exists(sig)) return false;
+            return File.ReadAllText(sig) == BuildSourceSignature(fanartPath, logoPath);
+        }
+        catch { return false; }
+    }
+
+    private void WriteSourceSignature(string composedFilePath, string fanartPath, string logoPath)
+    {
+        try { File.WriteAllText(SourceSignaturePath(composedFilePath), BuildSourceSignature(fanartPath, logoPath)); }
+        catch (Exception ex) { _logger.LogWarning($"[CACHE] Failed to write source signature: {ex.Message}"); }
+    }
+
     /// <summary>
     /// EN: Save offset metadata for a composed file (only if custom offsets)
     /// FR: Sauvegarder les mÃ©tadonnÃ©es d'offsets pour un fichier composÃ© (seulement si offsets personnalisÃ©s)

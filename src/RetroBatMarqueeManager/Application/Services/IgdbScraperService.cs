@@ -45,6 +45,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private readonly ILogger<IgdbScraperService> _logger;
         private readonly IConfigService _config;
+        private readonly ScrapeOverrideService _overrides;
         private readonly string _failedPath;
 
         private static readonly HttpClient _http;
@@ -67,10 +68,11 @@ namespace RetroBatMarqueeManager.Application.Services
             _http.DefaultRequestHeaders.UserAgent.ParseAdd("RetroBatMarqueeManager/1.0");
         }
 
-        public IgdbScraperService(ILogger<IgdbScraperService> logger, IConfigService config)
+        public IgdbScraperService(ILogger<IgdbScraperService> logger, IConfigService config, ScrapeOverrideService overrides)
         {
             _logger = logger;
             _config = config;
+            _overrides = overrides;
             _failedPath = Path.Combine(_config.MarqueeImagePath, "_cache", "igdb_failed.json");
             LoadFailed();
         }
@@ -201,7 +203,10 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 _logger.LogInformation($"[IGDB] Starting scrape for '{gameName}' ({systemName}) [media: {string.Join(",", kinds)}]...");
 
-                string? imageId = await FindImageIdAsync(gameName, kinds);
+                var ov = _overrides.Get(systemName, romName);
+                if (ov != null && ov.HasDataFor(Name)) _overrides.MarkTried(Name, systemName, romName);
+
+                string? imageId = await FindImageIdAsync(gameName, kinds, ov);
                 if (imageId == null)
                 {
                     _logger.LogWarning($"[IGDB] No matching game with artwork/screenshot found for '{gameName}'.");
@@ -324,12 +329,38 @@ namespace RetroBatMarqueeManager.Application.Services
             public int Height;
         }
 
-        private async Task<string?> FindImageIdAsync(string gameName, string[] kinds)
+        private async Task<string?> FindImageIdAsync(string gameName, string[] kinds, GameOverride? ov = null)
         {
-            foreach (var term in SearchTerms(gameName))
+            // EN: Manual fix 1: an exact IGDB game ID.
+            int? forcedId = ov?.NumericIdFor(Name);
+            if (forcedId != null)
+            {
+                using var byId = await QueryGamesAsync(null, forcedId);
+                if (byId != null && byId.RootElement.ValueKind == JsonValueKind.Array)
+                    foreach (var game in byId.RootElement.EnumerateArray())
+                    {
+                        var img = PickImage(game, kinds);
+                        if (img != null) return img;
+                    }
+                return null;
+            }
+
+            // EN: Manual fix 2: an explicit Name is trusted (first result that has artwork).
+            bool trust = !string.IsNullOrWhiteSpace(ov?.Name);
+            foreach (var term in SearchTerms(trust ? ov!.Name! : gameName))
             {
                 using var doc = await QueryGamesAsync(term);
                 if (doc == null || doc.RootElement.ValueKind != JsonValueKind.Array) continue;
+
+                if (trust)
+                {
+                    foreach (var game in doc.RootElement.EnumerateArray())
+                    {
+                        var img = PickImage(game, kinds);
+                        if (img != null) return img;
+                    }
+                    continue;
+                }
 
                 string wanted = Normalize(term);
                 string? exactImage = null;
@@ -415,10 +446,10 @@ namespace RetroBatMarqueeManager.Application.Services
             (s ?? "").Replace("\\", " ").Replace("\"", " ").Replace("\r", " ").Replace("\n", " ");
 
         // EN: null = nothing usable. Throws IgdbTransientException for anything that does not describe the game itself.
-        private async Task<JsonDocument?> QueryGamesAsync(string term)
+        private async Task<JsonDocument?> QueryGamesAsync(string? term, int? id = null)
         {
             string query =
-                $"search \"{EscapeQuery(term)}\"; " +
+                (id != null ? $"where id = {id.Value}; " : $"search \"{EscapeQuery(term ?? "")}\"; ") +
                 "fields name,alternative_names.name,artworks.image_id,artworks.width,artworks.height," +
                 "screenshots.image_id,screenshots.width,screenshots.height; limit 10;";
 
@@ -571,6 +602,8 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private bool IsFailed(string systemName, string romName)
         {
+            if (_overrides.ShouldBypass(Name, systemName, romName)) return false; // fresh attempt after an override edit
+            if (_overrides.IsRejected(systemName, romName)) return true;          // discarded with Ctrl+Shift+R
             lock (_failedLock) { return _failed.Contains(FailKey(systemName, romName)); }
         }
 

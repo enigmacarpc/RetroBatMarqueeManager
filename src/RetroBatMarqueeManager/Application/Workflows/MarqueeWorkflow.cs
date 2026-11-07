@@ -69,6 +69,8 @@ namespace RetroBatMarqueeManager.Application.Workflows
         private string? _currentDmdPath;
         private string? _currentDmdRibbonPath; // EN: Track last DMD ribbon for composition / FR: Suivre le dernier ruban DMD pour composition
 
+        private readonly ScrapeOverrideService _scrapeOverrides;
+
         public MarqueeWorkflow(
             IConfigService config, 
             ImageConversionService imageService, 
@@ -80,11 +82,13 @@ namespace RetroBatMarqueeManager.Application.Workflows
             VideoMarqueeService videoService,
             VideoOffsetStorageService videoOffsetStorage,
             IScraperManager scraperManager,
+            ScrapeOverrideService scrapeOverrides,
             IOverlayTemplateService templateService,
             ILogger<MarqueeWorkflow> logger,
             RetroAchievementsService? raService = null)
         {
             _config = config;
+            _scrapeOverrides = scrapeOverrides;
             _imageService = imageService;
             _mpv = mpv;
             _marqueeFinder = marqueeFinder;
@@ -126,6 +130,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
             _inputService.OnTogglePlayback += HandleTogglePlayback;
             _inputService.OnTrimStart += () => HandleTrimCommand(true);
             _inputService.OnTrimEnd += () => HandleTrimCommand(false);
+            _inputService.OnDiscardScrape += HandleDiscardScrape;
             
             // EN: Subscribe to RetroAchievements events / FR: S'abonner aux événements RetroAchievements
             if (_raService != null)
@@ -180,6 +185,21 @@ namespace RetroBatMarqueeManager.Application.Workflows
         private DateTime _lastDmdRpUpdate = DateTime.MinValue; // EN: Debounce for DMD RP / FR: Limitation fréquence DMD RP
         private DateTime _dmdRpDisplayExpiry = DateTime.MinValue; // EN: Expiry for showing RP on DMD / FR: Expiration de l'affichage RP sur DMD
         private string _lastDmdText = string.Empty; // EN: Track last text sent to DMD / FR: Suivre dernier texte envoyé au DMD
+
+        // EN: Ctrl+Shift+R - reject the scraped hero/logo of the game currently selected, then refresh it.
+        // FR: Ctrl+Shift+R - rejeter le hero/logo scrapé du jeu sélectionné, puis rafraîchir.
+        private void HandleDiscardScrape()
+        {
+            var system = _currentGameSystem;
+            var name = _currentGameName;
+            var rom = _currentGameRom;
+            if (string.IsNullOrEmpty(system) || string.IsNullOrEmpty(name) || _gameRunning) return;
+
+            string romName = string.IsNullOrEmpty(rom) ? name : Path.GetFileNameWithoutExtension(rom);
+            int moved = _scrapeOverrides.Reject(system, romName);
+            _logger.LogInformation($"[Overrides] Rejected scraped media for '{romName}' ({system}); {moved} file(s) moved to _cache\\discarded.");
+            _ = HandleGameSelected(system, name, rom ?? "");
+        }
 
         private void HandleMoveCommand(int dx, int dy, bool isLogo)
         {

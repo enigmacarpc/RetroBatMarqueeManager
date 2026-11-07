@@ -164,6 +164,7 @@ public class Program
                     services.AddSingleton<ArcadeItaliaScraperService>();
                     services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<ArcadeItaliaScraperService>());
 
+                    services.AddSingleton<ScrapeOverrideService>(); // manual fixes shared by the Steam/IGDB/SteamGridDB scrapers
                     services.AddSingleton<SteamGridDbScraperService>();
                     services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<SteamGridDbScraperService>());
 
