@@ -196,8 +196,8 @@ namespace RetroBatMarqueeManager.Application.Workflows
             if (string.IsNullOrEmpty(system) || string.IsNullOrEmpty(name) || _gameRunning) return;
 
             string romName = string.IsNullOrEmpty(rom) ? name : Path.GetFileNameWithoutExtension(rom);
-            int moved = _scrapeOverrides.Reject(system, romName);
-            _logger.LogInformation($"[Overrides] Rejected scraped media for '{romName}' ({system}); {moved} file(s) moved to _cache\\discarded.");
+            var (moved, adopted) = _scrapeOverrides.Reject(system, romName);
+            _logger.LogInformation($"[Overrides] Rejected scraped media for '{romName}' ({system}); {moved} file(s) moved to _cache\\discarded, {adopted} own image(s) picked up from the roms folder.");
             _ = HandleGameSelected(system, name, rom ?? "");
         }
 

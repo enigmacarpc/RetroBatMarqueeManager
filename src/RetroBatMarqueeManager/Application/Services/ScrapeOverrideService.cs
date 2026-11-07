@@ -197,9 +197,10 @@ namespace RetroBatMarqueeManager.Application.Services
         /// EN: Move the staged hero + logo of a game to _cache\discarded, delete its composed cache and remember the
         /// rejection so the scrapers don't fetch it again. Files in RetroBat's own images folder are never touched.
         /// </summary>
-        public int Reject(string systemName, string romName)
+        public (int Moved, int Adopted) Reject(string systemName, string romName)
         {
             int moved = 0;
+            int adopted = 0;
             try
             {
                 string discardDir = Path.Combine(_config.MarqueeImagePath, "_cache", "discarded", Sanitize(systemName));
@@ -236,6 +237,10 @@ namespace RetroBatMarqueeManager.Application.Services
                 _logger.LogWarning($"[Overrides] Discard failed: {ex.Message}");
             }
 
+            // EN: Now look for the user's own images in RetroBat roms folder (per system) and use them.
+            try { adopted = AdoptOwnImages(systemName, romName); }
+            catch (Exception ex) { _logger.LogWarning($"[Overrides] Looking for own images failed: {ex.Message}"); }
+
             lock (_lock)
             {
                 _rejected.Add(Key(systemName, romName));
@@ -244,7 +249,113 @@ namespace RetroBatMarqueeManager.Application.Services
                     _tried.Remove($"{scraper}|{Key(systemName, romName)}");
                 SaveRejected();
             }
-            return moved;
+            return (moved, adopted);
+        }
+
+        // ------------------------------------------------------------------ own images from roms\<system>
+
+        private static readonly string[] HeroMediaDirs = { "images", "media\\fanart", "media\\fanarts", "fanart", "downloaded_images" };
+        private static readonly string[] LogoMediaDirs = { "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos", "downloaded_images" };
+        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero", "" };
+        private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo", "" };
+
+        /// <summary>
+        /// EN: Copy the user's own hero/logo into the staging folder as {rom}-fanart / {rom}. Looks in
+        /// RomsPath\<system>: first what that system's gamelist.xml points to (it differs per system), then the usual folders.
+        /// Nothing is moved or deleted there.
+        /// </summary>
+        private int AdoptOwnImages(string systemName, string romName)
+        {
+            string systemDir = Path.Combine(_config.RomsPath, systemName);
+            if (!Directory.Exists(systemDir)) return 0;
+
+            var entry = ReadGamelistEntry(systemDir, romName);
+            string? hero = FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
+            string? logo = FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo"), LogoMediaDirs, LogoSuffixes, romName);
+
+            int count = 0;
+            if (hero != null && CopyToStaging(hero, systemName, romName, isHero: true)) count++;
+            if (logo != null && CopyToStaging(logo, systemName, romName, isHero: false)) count++;
+            _logger.LogInformation($"[Overrides] Own images for '{romName}': hero={(hero ?? "none")} logo={(logo ?? "none")}");
+            return count;
+        }
+
+        // EN: Tag -> relative/absolute path from the matching <game> in roms\<system>\gamelist.xml. Empty if none.
+        private Dictionary<string, string> ReadGamelistEntry(string systemDir, string romName)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                string file = Path.Combine(systemDir, "gamelist.xml");
+                if (!File.Exists(file)) return result;
+
+                var doc = System.Xml.Linq.XDocument.Load(file);
+                foreach (var game in doc.Descendants("game"))
+                {
+                    string? path = game.Element("path")?.Value;
+                    if (string.IsNullOrWhiteSpace(path)) continue;
+                    string stem = Path.GetFileNameWithoutExtension(path.Replace('/', '\\'));
+                    if (!stem.Equals(romName, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    foreach (var tag in new[] { "fanart", "wheel", "logo" })
+                    {
+                        var v = game.Element(tag)?.Value?.Trim();
+                        if (!string.IsNullOrEmpty(v)) result[tag] = v;
+                    }
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Overrides] Could not read gamelist.xml: {ex.Message}");
+            }
+            return result;
+        }
+
+        private string? FirstExisting(string systemDir, string? listed, string[] dirs, string[] suffixes, string romName)
+        {
+            // EN: 1. exactly what gamelist.xml says
+            if (!string.IsNullOrWhiteSpace(listed))
+            {
+                string rel = listed.Replace('/', '\\');
+                string full = Path.IsPathRooted(rel) ? rel : Path.GetFullPath(Path.Combine(systemDir, rel.TrimStart('.', '\\')));
+                if (File.Exists(full) && IsAccepted(full)) return full;
+            }
+            // EN: 2. usual folder + suffix names
+            foreach (var dir in dirs)
+                foreach (var suffix in suffixes)
+                    foreach (var ext in _config.AcceptedFormats)
+                    {
+                        string candidate = Path.Combine(systemDir, dir, $"{romName}{suffix}.{ext.Trim()}");
+                        if (File.Exists(candidate)) return candidate;
+                    }
+            return null;
+        }
+
+        private bool IsAccepted(string file)
+        {
+            string ext = Path.GetExtension(file).TrimStart('.');
+            return _config.AcceptedFormats.Any(a => a.Trim().Equals(ext, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool CopyToStaging(string source, string systemName, string romName, bool isHero)
+        {
+            try
+            {
+                string pattern = _config.MarqueeFilePath.Replace("{system_name}", systemName).Replace("{game_name}", romName);
+                if (isHero) pattern += "-fanart";
+                string target = Path.Combine(_config.MarqueeImagePath, pattern) + Path.GetExtension(source).ToLowerInvariant();
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                if (File.Exists(target)) return false; // never overwrite
+                File.Copy(source, target);
+                _logger.LogInformation($"[Overrides] Using your own image: {source} -> {target}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Overrides] Could not copy {source}: {ex.Message}");
+                return false;
+            }
         }
 
         private static string Sanitize(string s)
