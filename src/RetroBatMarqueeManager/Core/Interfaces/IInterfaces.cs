@@ -58,6 +58,10 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         string SteamGridDbMedia { get; } // "hero", "logo" or "hero,logo"
         // Steam Settings (keyless: Steam store search + Steam image CDN)
         string SteamMedia { get; } // "hero", "logo" or "hero,logo"
+        // IGDB Settings (Twitch application credentials)
+        string IgdbClientId { get; }
+        string IgdbClientSecret { get; }
+        string IgdbMedia { get; } // preference order: "artwork,screenshot" (default), "artwork" or "screenshot"
 
         string ScreenScraperUser { get; }
         string ScreenScraperPass { get; }

@@ -280,6 +280,11 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         // Steam Settings (no key: Steam store search + Steam image CDN)
         public string SteamMedia => GetValue("SteamMedia", "hero,logo"); // hero, logo or hero,logo
 
+        // IGDB Settings (Twitch application: client id + client secret from dev.twitch.tv/console)
+        public string IgdbClientId => GetValue("IgdbClientId", "");
+        public string IgdbClientSecret => GetValue("IgdbClientSecret", "");
+        public string IgdbMedia => GetValue("IgdbMedia", "artwork,screenshot"); // artwork,screenshot (fallback order), artwork or screenshot
+
           // Logic Flags
         // MarqueeAutoGeneration moved to alias below
         // ... (Other properties remain the same) ...
@@ -676,6 +681,11 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 // Steam (NEW, keyless)
                 { "SteamMedia", "hero,logo" },
 
+                // IGDB (NEW)
+                { "IgdbClientId", "" },
+                { "IgdbClientSecret", "" },
+                { "IgdbMedia", "artwork,screenshot" },
+
                 // IPC
                 { "ScreenNumber", "1" },
                 { "HwDecoding", "no" },
@@ -763,6 +773,11 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
 
                 // Steam
                 _settings["SteamMedia"] = "hero,logo";
+
+                // IGDB
+                _settings["IgdbClientId"] = "";
+                _settings["IgdbClientSecret"] = "";
+                _settings["IgdbMedia"] = "artwork,screenshot";
 
                 // RetroAchievements
                 _settings["RetroAchievementsWebApiKey"] = "";
@@ -871,7 +886,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("[ScrapersSource]");
                 sb.AppendLine("; Master switch for scraping (true/false)");
                 WriteKey(sb, "MarqueeAutoScraping", "false");
-                sb.AppendLine("; Order of usage for scrapers (ScreenScraper, arcadeitalia, SteamGridDB, Steam)");
+                sb.AppendLine("; Order of usage for scrapers (ScreenScraper, arcadeitalia, SteamGridDB, Steam, IGDB)");
                 WriteKey(sb, "PrioritySource", "");
 
                 // --- [arcadeitalia] ---
@@ -897,6 +912,18 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("; What to download: hero, logo or hero,logo. Saved as <rom>-fanart (hero) and <rom> (logo)");
                 sb.AppendLine("; so the normal Fanart + Logo composition builds the marquee (needs MarqueeCompose=true, ComposeMedia=fanart).");
                 WriteKey(sb, "SteamMedia", "hero,logo");
+
+                // --- [IGDB] ---
+                sb.AppendLine();
+                sb.AppendLine("[IGDB]");
+                sb.AppendLine("; IGDB (igdb.com) is accessed with a free Twitch application: create one at https://dev.twitch.tv/console");
+                sb.AppendLine("; and paste its Client ID and Client Secret below. Do not share this file with the secret in it.");
+                sb.AppendLine("; IGDB has no game logos: it only provides the wide hero (saved as <rom>-fanart). A lower-priority source");
+                sb.AppendLine("; such as Steam or SteamGridDB can still add the logo. Without a logo, the system logo is used.");
+                sb.AppendLine("; IgdbMedia = preference order: artwork,screenshot (default), artwork or screenshot");
+                WriteKey(sb, "IgdbClientId", "");
+                WriteKey(sb, "IgdbClientSecret", "");
+                WriteKey(sb, "IgdbMedia", "artwork,screenshot");
 
                 // --- [ScreenScraper] ---
                 sb.AppendLine();
@@ -996,7 +1023,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
                     "MPVScrapMediaType", "DMDScrapMediaType", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
-                    "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "MarqueeRetroAchievementsDisplayTarget",
+                    "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",
                     "MpvRetroAchievementsNotifications", "DmdRetroAchievementsNotifications",
                     "HwDecoding"

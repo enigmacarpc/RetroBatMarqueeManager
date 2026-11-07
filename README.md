@@ -86,7 +86,12 @@ Edit `config.ini` in the plugin folder to customize behavior.
 
 *   **Scraping Settings**:
     *   `MarqueeAutoScraping`: Enable automatic media scraping. **Priority**: Scraped media takes precedence over default images found in the ROM folder.
-    *   `PrioritySource`: Order of preference for scrapers (e.g. `ScreenScraper, arcadeitalia, SteamGridDB, Steam`).
+    *   `PrioritySource`: Order of preference for scrapers (e.g. `ScreenScraper, arcadeitalia, SteamGridDB, Steam, IGDB`).
+    *   **IGDB** (`[IGDB]` section, source name `IGDB`): downloads a wide **hero** from igdb.com. IGDB is run by Twitch, so you need a free Twitch application (<https://dev.twitch.tv/console>): create one, then copy its Client ID and generate a Client Secret.
+        *   `IgdbClientId` and `IgdbClientSecret`: your Twitch application credentials (both required). Keep `config.ini` private, since it holds the secret.
+        *   `IgdbMedia`: preference order, `artwork,screenshot` (default), `artwork` or `screenshot`. The widest landscape image is picked.
+        *   IGDB has **no game logos**, so only the hero is saved (as `<rom>-fanart`, same folders and "never overwritten" rule as Steam/SteamGridDB). IGDB does not stop the scraper chain: a lower-priority source such as `Steam` or `SteamGridDB` can still add the logo; with no logo the system logo is used. Good fit: `PrioritySource=Steam, SteamGridDB, IGDB` (IGDB then covers console and retro games that PC stores don't have) or put `IGDB` first if you prefer its artwork for hero.
+        *   Games not found are remembered in `_cache\igdb_failed.json` inside your medias folder; delete that file to retry them. Look for `[IGDB]` lines in the log.
     *   **Steam** (`[Steam]` section, source name `Steam`): no API key needed. Finds the game with Steam's public store search, then downloads its **hero** (`library_hero.jpg`) and **logo** (`logo.png`) from Steam's image CDN.
         *   `SteamMedia`: `hero,logo` (default), `hero` or `logo`.
         *   Files are staged exactly like SteamGridDB (`<rom>-fanart` and `<rom>`), so it needs the same `MarqueeCompose=true` and `ComposeMedia=fanart`. Existing files are never overwritten.

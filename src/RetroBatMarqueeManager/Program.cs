@@ -170,6 +170,9 @@ public class Program
                     services.AddSingleton<SteamScraperService>();
                     services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<SteamScraperService>());
 
+                    services.AddSingleton<IgdbScraperService>();
+                    services.AddSingleton<IScraperService>(sp => sp.GetRequiredService<IgdbScraperService>());
+
                     services.AddSingleton<IScraperManager, ScraperManager>();
 
                     // EN: RetroAchievements (API Client + Service) / FR: RetroAchievements (Client API + Service)
