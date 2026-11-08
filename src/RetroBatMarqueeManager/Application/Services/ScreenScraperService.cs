@@ -74,6 +74,13 @@ namespace RetroBatMarqueeManager.Application.Services
                 {
                     if (File.Exists(_failedScrapsPath))
                     {
+                        // EN: "Not found" results are retried at every app start: forget the saved list instead of loading it.
+                        File.Delete(_failedScrapsPath);
+                        _logger.LogInformation("[ScreenScraper] Cleared saved 'not found' list: missing media is searched again after each app start.");
+                        return;
+                    }
+                    if (File.Exists(_failedScrapsPath))
+                    {
                         var json = File.ReadAllText(_failedScrapsPath);
                         var list = JsonSerializer.Deserialize<List<string>>(json);
                         if (list != null)

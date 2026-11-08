@@ -514,6 +514,10 @@ namespace RetroBatMarqueeManager.Application.Services
                 lock (_failedLock)
                 {
                     if (!File.Exists(_failedPath)) return;
+                    // EN: "Not found" results are retried at every app start: forget the saved list instead of loading it.
+                    File.Delete(_failedPath);
+                    _logger.LogInformation("[SteamGridDB] Cleared saved 'not found' list: missing media is searched again after each app start.");
+                    return;
                     var list = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(_failedPath));
                     if (list == null) return;
                     foreach (var item in list) _failed.Add(item);

@@ -226,3 +226,5 @@ For users of **Zaccaria Pinball**, it is possible to create a virtual secondary 
 >
 > **To Keep MPV Active (Change last value to False):**
 > `zaccariapinball=dmdext.exe mirror --source=screen --position !POSITION! -d {DmdModel};False;False`
+
+*   **Retrying missing media:** games a source could not find are remembered only until the app is closed. At every app start the saved "not found" lists (`*_failed.json`) are cleared, so games without media are searched again. Games rejected with Ctrl+Shift+R stay rejected.
