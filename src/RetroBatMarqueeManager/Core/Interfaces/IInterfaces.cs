@@ -48,6 +48,7 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         string MPVScrapMediaType { get; }
         string DMDScrapMediaType { get; }
         bool MarqueeGlobalScraping { get; }
+        bool RetryMissingOnStart { get; } // EN: forget saved "not found" lists at app start / FR: oublier les listes "introuvable" au démarrage
         // Scraper Priority Manager
         List<string> ScraperPriorities { get; } // [ScrapersSource] PrioritySource=...
         // ArcadeItalia Settings

@@ -664,6 +664,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             txtSSQueueKeep.Text = _configManager.GetValue(_config, "ScreenScraper", "ScreenScraperQueueKeep", "3");
             
             chkSSGlobal.Checked = _configManager.GetValue(_config, "ScreenScraper", "MarqueeGlobalScraping", "false") == "true";
+            chkRetryMissing.Checked = _configManager.GetValue(_config, "ScreenScraper", "RetryMissingOnStart", "true") == "true";
             txtMPVScrapMediaType.Text = _configManager.GetValue(_config, "ScreenScraper", "MPVScrapMediaType", "");
             txtDMDScrapMediaType.Text = _configManager.GetValue(_config, "ScreenScraper", "DMDScrapMediaType", "");
             
@@ -769,6 +770,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             _configManager.SetValue(_config, "ScreenScraper", "ScreenScraperQueueLimit", txtSSQueueLimit.Text);
             _configManager.SetValue(_config, "ScreenScraper", "ScreenScraperQueueKeep", txtSSQueueKeep.Text);
             _configManager.SetValue(_config, "ScreenScraper", "MarqueeGlobalScraping", chkSSGlobal.Checked.ToString().ToLower());
+            _configManager.SetValue(_config, "ScreenScraper", "RetryMissingOnStart", chkRetryMissing.Checked.ToString().ToLower());
             _configManager.SetValue(_config, "ScreenScraper", "MPVScrapMediaType", txtMPVScrapMediaType.Text);
             _configManager.SetValue(_config, "ScreenScraper", "DMDScrapMediaType", txtDMDScrapMediaType.Text);
             

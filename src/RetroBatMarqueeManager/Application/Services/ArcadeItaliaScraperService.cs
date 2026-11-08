@@ -47,7 +47,7 @@ namespace RetroBatMarqueeManager.Application.Services
             {
                 lock (_failedLock)
                 {
-                    if (File.Exists(_failedScrapsPath))
+                    if (_config.RetryMissingOnStart && File.Exists(_failedScrapsPath))
                     {
                         // EN: "Not found" results are retried at every app start: forget the saved list instead of loading it.
                         File.Delete(_failedScrapsPath);

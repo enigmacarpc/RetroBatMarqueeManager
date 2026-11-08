@@ -182,6 +182,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         // EN: Auto-scraping from ScreenScraper API
         // FR: Scraping automatique depuis l'API ScreenScraper
         public bool MarqueeAutoScraping => GetValue("MarqueeAutoScraping", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
+        public bool RetryMissingOnStart => GetValue("RetryMissingOnStart", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
         public bool MarqueeGlobalScraping => GetValue("MarqueeGlobalScraping", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
         public string MPVScrapMediaType => GetValue("MPVScrapMediaType", "");
         public string DMDScrapMediaType => GetValue("DMDScrapMediaType", "");
@@ -632,6 +633,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "ScreenScraperQueueLimit", "5" },
                 { "ScreenScraperQueueKeep", "3" },
                 { "MarqueeGlobalScraping", "false" },
+                { "RetryMissingOnStart", "true" },
                 { "AcceptedFormats", "png,jpg,jpeg,svg,mp4,gif" },
                 { "MinimizeToTray", "true" },
                 { "AutoStart", "false" },
@@ -748,6 +750,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["ScreenScraperDevId"] = "";
                 _settings["ScreenScraperDevPassword"] = "";
                 _settings["MarqueeGlobalScraping"] = "false";
+                _settings["RetryMissingOnStart"] = "true";
                 _settings["ScreenScraperThreads"] = "1";
                 _settings["AcceptedFormats"] = "png,jpg,jpeg,svg,mp4,gif";
                 _settings["MinimizeToTray"] = "true";
@@ -929,6 +932,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine();
                 sb.AppendLine("[ScreenScraper]");
                 WriteKey(sb, "MarqueeGlobalScraping", "false");
+                sb.AppendLine("; true = games that were not found are searched again at every app start; false = remembered until you delete the *_failed.json files in medias\\_cache");
+                WriteKey(sb, "RetryMissingOnStart", "true");
                 sb.AppendLine("; ScreenScraper Media Types (Keys are case-sensitive!)");
                 sb.AppendLine("; Common Marquees: screenmarquee, screenmarqueesmall, wheel, wheel-carbon, wheel-steel, steamgrid");
                 sb.AppendLine("; Others: box-2D, box-3D, sstitle, fanart, video");
@@ -1021,7 +1026,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "DmdEnabled", "DmdModel", "DmdExePath", "DmdMediaPath", "SystemCustomDMDPath", "DmdGameStartMediaPath", "DmdCompose", "DmdFormat", "DmdArguments", "DmdWidth", "DmdHeight", "DmdDotSize",
                     "ScreenNumber",
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
-                    "MPVScrapMediaType", "DMDScrapMediaType", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
+                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
                     "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",

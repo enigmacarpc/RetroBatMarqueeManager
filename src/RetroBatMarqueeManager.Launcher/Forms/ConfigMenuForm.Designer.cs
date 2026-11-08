@@ -68,6 +68,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.txtDMDScrapMediaType = new System.Windows.Forms.TextBox();
             this.txtMPVScrapMediaType = new System.Windows.Forms.TextBox();
             this.chkSSGlobal = new System.Windows.Forms.CheckBox();
+            this.chkRetryMissing = new System.Windows.Forms.CheckBox();
             this.cboDMDModel = new System.Windows.Forms.ComboBox();
             this.chkDMDEnabled = new System.Windows.Forms.CheckBox();
             this.txtDMDWidth = new System.Windows.Forms.TextBox();
@@ -568,6 +569,17 @@ namespace RetroBatMarqueeManager.Launcher.Forms
         "ver le scraping global pour tous les systèmes (écrase les réglages individuels)." +
         " (FR)");
             this.chkSSGlobal.UseVisualStyleBackColor = true;
+            //
+            // chkRetryMissing
+            //
+            this.chkRetryMissing.AutoSize = true;
+            this.chkRetryMissing.Location = new System.Drawing.Point(180, 274);
+            this.chkRetryMissing.Name = "chkRetryMissing";
+            this.chkRetryMissing.Size = new System.Drawing.Size(250, 19);
+            this.chkRetryMissing.TabIndex = 16;
+            this.chkRetryMissing.Text = "Retry missing media at every app start";
+            this.toolTipHint.SetToolTip(this.chkRetryMissing, "On: games that were not found are searched again each time the app starts. (EN)\nOff: they are remembered until you delete the *_failed.json files in medias\\_cache. (EN)\nActivé : les jeux introuvables sont recherchés à nouveau à chaque démarrage. (FR)");
+            this.chkRetryMissing.UseVisualStyleBackColor = true;
             // 
             // cboDMDModel
             // 
@@ -1599,6 +1611,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.groupScreenScraper.Controls.Add(this.txtMPVScrapMediaType);
             this.groupScreenScraper.Controls.Add(this.lblMPVScrapMediaType);
             this.groupScreenScraper.Controls.Add(this.chkSSGlobal);
+            this.groupScreenScraper.Controls.Add(this.chkRetryMissing);
             this.groupScreenScraper.Controls.Add(this.txtSSQueueKeep);
             this.groupScreenScraper.Controls.Add(this.lblSSQueueKeep);
             this.groupScreenScraper.Controls.Add(this.txtSSQueueLimit);
@@ -2780,6 +2793,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
         private System.Windows.Forms.TextBox txtMPVScrapMediaType;
         private System.Windows.Forms.Label lblMPVScrapMediaType;
         private System.Windows.Forms.CheckBox chkSSGlobal;
+        private System.Windows.Forms.CheckBox chkRetryMissing;
         private System.Windows.Forms.TextBox txtSSThreads;
         private System.Windows.Forms.Label lblSSThreads;
         private System.Windows.Forms.TextBox txtSSQueueLimit;
