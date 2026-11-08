@@ -889,7 +889,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("[ScrapersSource]");
                 sb.AppendLine("; Master switch for scraping (true/false)");
                 WriteKey(sb, "MarqueeAutoScraping", "false");
-                sb.AppendLine("; Order of usage for scrapers (ScreenScraper, arcadeitalia, SteamGridDB, Steam, IGDB)");
+                sb.AppendLine("; List EVERY scraper you want to use, in order, separated by commas (ScreenScraper, arcadeitalia, SteamGridDB, Steam, IGDB).");
+                sb.AppendLine("; Only the sources listed here are used. Example: PrioritySource=SteamGridDB, IGDB, arcadeitalia, Steam");
                 WriteKey(sb, "PrioritySource", "");
 
                 // --- [arcadeitalia] ---

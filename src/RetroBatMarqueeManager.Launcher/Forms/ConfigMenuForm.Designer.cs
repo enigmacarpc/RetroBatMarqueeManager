@@ -1381,7 +1381,9 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.lblPrioritySource.Name = "lblPrioritySource";
             this.lblPrioritySource.Size = new System.Drawing.Size(90, 15);
             this.lblPrioritySource.TabIndex = 1;
-            this.lblPrioritySource.Text = "Scraper Priority:";
+            this.lblPrioritySource.Text = "Scrapers (in order):";
+            this.toolTipHint.SetToolTip(this.txtPrioritySource, "List EVERY scraper to use, in order, separated by commas (ScreenScraper, arcadeitalia, SteamGridDB, Steam, IGDB). Only the sources listed here are used. Example: SteamGridDB, IGDB, arcadeitalia, Steam (EN)\nListez TOUS les scrapers à utiliser, dans l'ordre, séparés par des virgules. Seules les sources listées sont utilisées. (FR)");
+            this.toolTipHint.SetToolTip(this.lblPrioritySource, this.toolTipHint.GetToolTip(this.txtPrioritySource));
             // 
             // groupArcadeItalia
             // 

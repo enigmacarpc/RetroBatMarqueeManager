@@ -110,8 +110,12 @@ namespace RetroBatMarqueeManager.Application.Workflows
                     !string.IsNullOrEmpty(_currentGameSystem) && 
                     _currentGameSystem.Equals(sys, StringComparison.OrdinalIgnoreCase))
                 {
-                     // Match against name OR rom name (since scrap uses both)
+                     // Match against name OR rom name OR the title the scrapers were given (they often differ:
+                     // "Halo 3" vs "Halo 3 (USA)"). Without this the refresh was skipped and the next source in
+                     // PrioritySource only started after re-selecting the game.
                      if (_currentGameName.Equals(game, StringComparison.OrdinalIgnoreCase) || 
+                         (!string.IsNullOrEmpty(_currentGameTitle) && _currentGameTitle.Equals(game, StringComparison.OrdinalIgnoreCase)) ||
+                         NormalizeTitle(_currentGameName) == NormalizeTitle(game) ||
                          (!string.IsNullOrEmpty(_currentGameRom) && _currentGameRom.Contains(game, StringComparison.OrdinalIgnoreCase)))
                      {
                          if (path != null)
@@ -119,7 +123,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
                          else
                              _logger.LogInformation($"[MarqueeWorkflow] Live scrape FAILED (or Not Found) for {game}. Triggering fallback refresh...");
 
-                         _ = HandleGameSelected(_currentGameSystem, _currentGameName, _currentGameRom ?? "");
+                         _ = HandleGameSelected(_currentGameSystem, _currentGameTitle ?? _currentGameName, _currentGameRom ?? "");
                      }
                 }
             };
@@ -188,6 +192,16 @@ namespace RetroBatMarqueeManager.Application.Workflows
 
         // EN: Ctrl+Shift+R - reject the scraped hero/logo of the game currently selected, then refresh it.
         // FR: Ctrl+Shift+R - rejeter le hero/logo scrapé du jeu sélectionné, puis rafraîchir.
+        private string? _currentGameTitle; // EN: game title as given by the frontend (what the scrapers are called with)
+
+        private static string NormalizeTitle(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            // EN: drop (region) and [tags], keep letters/digits only
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"\(.*?\)|\[.*?\]", "");
+            return new string(s.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+        }
+
         private void HandleDiscardScrape()
         {
             var system = _currentGameSystem;
@@ -198,7 +212,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
             string romName = string.IsNullOrEmpty(rom) ? name : Path.GetFileNameWithoutExtension(rom);
             var (moved, adopted) = _scrapeOverrides.Reject(system, romName);
             _logger.LogInformation($"[Overrides] Rejected scraped media for '{romName}' ({system}); {moved} file(s) moved to _cache\\discarded, {adopted} own image(s) picked up from the roms folder.");
-            _ = HandleGameSelected(system, name, rom ?? "");
+            _ = HandleGameSelected(system, _currentGameTitle ?? name, rom ?? "");
         }
 
         private void HandleMoveCommand(int dx, int dy, bool isLogo)
@@ -1292,6 +1306,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
             // romFileName = "After Burner Complete (Europe)" - matches video/image files
             // gameName = "After Burner Complete" - ES display name, might be truncated
             _currentGameName = romFileName; // Use full ROM name for consistency with file names
+            _currentGameTitle = null;
             _currentGameRom = romPath;
             _lastSelectedSystem = system;
             _gameRunning = true;
@@ -1474,6 +1489,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
             // EN: IMPORTANT: Use ROM filename (full name) for consistency with game-start
             // FR: IMPORTANT: Utiliser nom fichier ROM (nom complet) pour cohérence avec game-start
             _currentGameName = romFileName;
+            _currentGameTitle = gameName;
             _currentGameRom = romPath;
 
             // EN: Check if we need to regenerate video due to saved offsets

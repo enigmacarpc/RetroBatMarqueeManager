@@ -29,6 +29,10 @@ namespace RetroBatMarqueeManager.Application.Services
                 };
             }
 
+            var priorities = _config.ScraperPriorities;
+            if (priorities.Count == 1 && _scrapers.Count() > 1)
+                _logger.LogWarning($"[ScraperManager] PrioritySource lists only '{priorities[0]}'. Only the sources listed there are used: add every source you want, in order, separated by commas (available: {string.Join(", ", _scrapers.Select(s => s.Name))}).");
+
             _logger.LogInformation($"[ScraperManager] Initialized with {_scrapers.Count()} scrapers: {string.Join(", ", _scrapers.Select(s => s.Name))}");
         }
 
