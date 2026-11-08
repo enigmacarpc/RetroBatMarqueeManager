@@ -517,6 +517,14 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 if (backgroundInfo != null)
                 {
+                    // EN: Ctrl+D: the user removed the logo drawn on top (the background already contains one). Show the background alone.
+                    string effSystem = string.IsNullOrEmpty(realSystemFromPath) ? system : realSystemFromPath;
+                    if (_ownImages.IsNoLogo(effSystem, romFileName))
+                    {
+                        _logger.LogInformation($"Marquee: background only (logo removed with Ctrl+D) for {romFileName}");
+                        return _imageService.GenerateComposition(backgroundInfo, "", system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                    }
+
                     var topperRaw = TryFind(romFileName, systemCandidates, "-topper", raw: true) ?? TryFind(safeRomName, systemCandidates, "-topper", raw: true) ?? TryFind(gameName, systemCandidates, "-topper", raw: true) ?? TryFind(safeGameName, systemCandidates, "-topper", raw: true);
                     if (topperRaw != null)
                     {
@@ -534,7 +542,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
                     // EN: No game logo yet: use the user's own logo from roms\{system} (gamelist.xml <wheel>/<logo>, per system)
                     //     before falling back to the system logo (e.g. the Xbox 360 logo).
-                    var ownLogo = _ownImages.FindOwnLogo(system, romFileName);
+                    var ownLogo = _ownImages.FindOwnLogo(effSystem, romFileName);
                     if (ownLogo != null && !string.Equals(ownLogo, backgroundInfo, StringComparison.OrdinalIgnoreCase))
                     {
                          _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + own logo {ownLogo}");

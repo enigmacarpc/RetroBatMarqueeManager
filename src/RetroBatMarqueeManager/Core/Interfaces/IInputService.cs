@@ -10,6 +10,7 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         event Action OnVideoAdjustmentMode; // EN: Ctrl+V video adjustment / FR: Ctrl+V ajustement vidéo
         event Action OnTogglePlayback; // EN: Ctrl+P toggle playback / FR: Ctrl+P basculer lecture
         event Action OnTrimStart; // EN: Ctrl+I set start time / FR: Ctrl+I définir début
+        event Action OnDeleteLogo;   // EN: Ctrl+D remove (toggle) the logo drawn on top / FR: Ctrl+D retirer le logo superposé
         event Action OnDiscardScrape; // EN: Ctrl+Shift+R discard scraped hero/logo of current game / FR: Ctrl+Shift+R rejeter le hero/logo scrapé
         event Action OnTrimEnd; // EN: Ctrl+O set end time / FR: Ctrl+O définir fin
     }

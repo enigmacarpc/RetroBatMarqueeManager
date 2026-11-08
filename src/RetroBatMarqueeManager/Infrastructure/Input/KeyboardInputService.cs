@@ -16,6 +16,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
         public event Action? OnTrimStart;
         public event Action? OnTrimEnd;
         public event Action? OnDiscardScrape;
+        public event Action? OnDeleteLogo;
+        private bool _wasDDown = false;
         private bool _wasRDown = false;
 
         // Detection rate limiter (Debounce)
@@ -67,6 +69,15 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
                 _lastInputTime = DateTime.Now;
             }
             _wasRDown = isRDown;
+
+            // EN: Ctrl+D = remove (toggle) the logo drawn on top of the background (one-shot).
+            bool isDDown = (GetAsyncKeyState(0x44) & 0x8000) != 0; // VK_D
+            if (ctrlPressed && !altPressed && !shiftPressed && isDDown && !_wasDDown)
+            {
+                OnDeleteLogo?.Invoke();
+                _lastInputTime = DateTime.Now;
+            }
+            _wasDDown = isDDown;
             
             // EN: Check Ctrl+V for video adjustment mode (before other checks)
             // FR: Vérifier Ctrl+V pour mode ajustement vidéo (avant autres vérifications)

@@ -132,7 +132,13 @@ namespace RetroBatMarqueeManager.Application.Workflows
             _inputService.OnScaleCommand += HandleScaleCommand;
             _inputService.OnVideoAdjustmentMode += HandleVideoAdjustmentMode;
             _inputService.OnTogglePlayback += HandleTogglePlayback;
-            _inputService.OnTrimStart += () => HandleTrimCommand(true);
+            // EN: Ctrl+I trims a playing video; everywhere else it opens the image picker.
+            _inputService.OnTrimStart += () =>
+            {
+                if (_isVideoAdjustmentMode && _isVideoPlaybackMode) HandleTrimCommand(true);
+                else HandlePickImage();
+            };
+            _inputService.OnDeleteLogo += HandleDeleteLogo;
             _inputService.OnTrimEnd += () => HandleTrimCommand(false);
             _inputService.OnDiscardScrape += HandleDiscardScrape;
             
@@ -202,17 +208,120 @@ namespace RetroBatMarqueeManager.Application.Workflows
             return new string(s.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
         }
 
-        private void HandleDiscardScrape()
-        {
-            var system = _currentGameSystem;
-            var name = _currentGameName;
-            var rom = _currentGameRom;
-            if (string.IsNullOrEmpty(system) || string.IsNullOrEmpty(name) || _gameRunning) return;
+        private bool _pickerOpen;
 
-            string romName = string.IsNullOrEmpty(rom) ? name : Path.GetFileNameWithoutExtension(rom);
+        private async void ShowOsd(string text)
+        {
+            try
+            {
+                var safe = text.Replace("\\", "/").Replace("\"", "'");
+                await _mpv.SendCommandAsync($"{{\"command\":[\"show-text\", \"{safe}\", 3000]}}");
+            }
+            catch { /* display message is best effort */ }
+        }
+
+        private bool TryGetCurrentGame(out string system, out string romName, string hotkey)
+        {
+            system = _currentGameSystem ?? "";
+            romName = "";
+            if (_pickerOpen) return false;
+            if (string.IsNullOrEmpty(_currentGameSystem) || string.IsNullOrEmpty(_currentGameName) || _gameRunning)
+            {
+                _logger.LogInformation($"[Overrides] {hotkey} ignored: no game selected (system='{_currentGameSystem}', game='{_currentGameName}', running={_gameRunning}).");
+                return false;
+            }
+            romName = string.IsNullOrEmpty(_currentGameRom) ? _currentGameName! : Path.GetFileNameWithoutExtension(_currentGameRom);
+            return true;
+        }
+
+        // EN: Ctrl+Shift+R - reject the scraped hero/logo of the game currently selected, then refresh it.
+        // FR: Ctrl+Shift+R - rejeter le hero/logo scrapé du jeu sélectionné, puis rafraîchir.
+        private async void HandleDiscardScrape()
+        {
+            _logger.LogInformation("[Overrides] Ctrl+Shift+R received.");
+            if (!TryGetCurrentGame(out var system, out var romName, "Ctrl+Shift+R")) return;
+
             var (moved, adopted) = _scrapeOverrides.Reject(system, romName);
             _logger.LogInformation($"[Overrides] Rejected scraped media for '{romName}' ({system}); {moved} file(s) moved to _cache\\discarded, {adopted} own image(s) picked up from the roms folder.");
-            _ = HandleGameSelected(system, _currentGameTitle ?? name, rom ?? "");
+            await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
+            ShowOsd($"Rejected: {moved} file(s) discarded, {adopted} own image(s) found");
+        }
+
+        // EN: Ctrl+D - remove the logo drawn on top of the background (toggle). FR: Ctrl+D - retirer le logo superposé (bascule).
+        private async void HandleDeleteLogo()
+        {
+            _logger.LogInformation("[Overrides] Ctrl+D received.");
+            if (!TryGetCurrentGame(out var system, out var romName, "Ctrl+D")) return;
+
+            bool removed = _scrapeOverrides.ToggleNoLogo(system, romName);
+            _logger.LogInformation($"[Overrides] Logo {(removed ? "removed" : "restored")} for '{romName}' ({system}).");
+            await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
+            ShowOsd(removed ? "Logo removed (Ctrl+D again to restore)" : "Logo restored");
+        }
+
+        // EN: Ctrl+I - choose an image in Explorer: a logo to draw on top of the background, or a background behind the logo.
+        // FR: Ctrl+I - choisir une image : un logo à superposer, ou un fond derrière le logo.
+        private async void HandlePickImage()
+        {
+            _logger.LogInformation("[Overrides] Ctrl+I received.");
+            if (!TryGetCurrentGame(out var system, out var romName, "Ctrl+I")) return;
+
+            _pickerOpen = true;
+            try
+            {
+                string initialDir = Path.Combine(_config.RomsPath, system, "downloaded_images");
+                if (!Directory.Exists(initialDir)) initialDir = Path.Combine(_config.RomsPath, system);
+                var formats = _config.AcceptedFormats.Select(f => "*." + f.Trim().TrimStart('.')).ToList();
+
+                (string? File, bool IsHero) pick = await Task.Run(() =>
+                {
+                    string? chosen = null;
+                    bool hero = false;
+                    var t = new Thread(() =>
+                    {
+                        // EN: hidden top-most owner so the dialogs come to the front over the frontend
+                        using var owner = new System.Windows.Forms.Form
+                        {
+                            TopMost = true, ShowInTaskbar = false, FormBorderStyle = System.Windows.Forms.FormBorderStyle.None,
+                            StartPosition = System.Windows.Forms.FormStartPosition.Manual, Location = new System.Drawing.Point(-32000, -32000), Size = new System.Drawing.Size(1, 1)
+                        };
+                        owner.Show();
+                        var answer = System.Windows.Forms.MessageBox.Show(owner,
+                            $"Add an image for '{romName}'.\n\nYES = LOGO (drawn on top of the background)\nNO = BACKGROUND (placed behind the logo)\nCANCEL = nothing",
+                            "Add image", System.Windows.Forms.MessageBoxButtons.YesNoCancel, System.Windows.Forms.MessageBoxIcon.Question);
+                        if (answer == System.Windows.Forms.DialogResult.Cancel) return;
+                        hero = answer == System.Windows.Forms.DialogResult.No;
+
+                        using var dlg = new System.Windows.Forms.OpenFileDialog
+                        {
+                            Title = hero ? $"Choose the BACKGROUND for {romName}" : $"Choose the LOGO for {romName}",
+                            InitialDirectory = initialDir,
+                            Filter = $"Images ({string.Join(", ", formats)})|{string.Join(";", formats)}|All files (*.*)|*.*",
+                            CheckFileExists = true,
+                            RestoreDirectory = true
+                        };
+                        if (dlg.ShowDialog(owner) == System.Windows.Forms.DialogResult.OK) chosen = dlg.FileName;
+                    });
+                    t.SetApartmentState(ApartmentState.STA);
+                    t.Start();
+                    t.Join();
+                    return (chosen, hero);
+                });
+
+                if (pick.File == null) { _logger.LogInformation("[Overrides] Image picker cancelled."); return; }
+
+                var target = _scrapeOverrides.ReplaceMedia(system, romName, pick.File, pick.IsHero);
+                await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
+                ShowOsd(target != null ? (pick.IsHero ? "Background replaced" : "Logo replaced") : "Could not use that image");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"[Overrides] Image picker failed: {ex.Message}");
+            }
+            finally
+            {
+                _pickerOpen = false;
+            }
         }
 
         private void HandleMoveCommand(int dx, int dy, bool isLogo)

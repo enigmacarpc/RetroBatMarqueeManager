@@ -493,6 +493,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private bool IsFailed(Asset asset, string systemName, string romName)
         {
+            if (asset == Asset.Logo && _overrides.IsNoLogo(systemName, romName)) return true; // user removed the logo (Ctrl+D)
             if (_overrides.ShouldBypass(Name, systemName, romName)) return false; // fresh attempt after an override edit
             if (_overrides.IsRejected(systemName, romName)) return true;          // discarded with Ctrl+Shift+R
             lock (_failedLock) { return _failed.Contains(FailKey(asset, systemName, romName)); }

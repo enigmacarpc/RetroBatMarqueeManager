@@ -47,6 +47,8 @@ namespace RetroBatMarqueeManager.Application.Services
         private readonly ILogger<ScrapeOverrideService> _logger;
         private readonly string _overridesPath;
         private readonly string _rejectedPath;
+        private readonly string _noLogoPath;
+        private readonly HashSet<string> _noLogo = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private readonly object _lock = new object();
         private Dictionary<string, GameOverride> _overrides = new Dictionary<string, GameOverride>(StringComparer.OrdinalIgnoreCase);
@@ -60,7 +62,9 @@ namespace RetroBatMarqueeManager.Application.Services
             _logger = logger;
             _overridesPath = Path.Combine(Path.GetDirectoryName(_config.ConfigPath) ?? AppContext.BaseDirectory, "scraper_overrides.ini");
             _rejectedPath = Path.Combine(_config.MarqueeImagePath, "_cache", "scrape_rejected.json");
+            _noLogoPath = Path.Combine(_config.MarqueeImagePath, "_cache", "no_logo.json");
             LoadRejected();
+            LoadNoLogo();
             EnsureTemplate();
         }
 
@@ -250,6 +254,129 @@ namespace RetroBatMarqueeManager.Application.Services
                 SaveRejected();
             }
             return (moved, adopted);
+        }
+
+        // ------------------------------------------------------------------ no logo (Ctrl+D) / manual replace (Ctrl+I)
+
+        /// <summary>EN: True when the user removed the logo that is drawn on top of this game's background.</summary>
+        public bool IsNoLogo(string systemName, string romName)
+        {
+            lock (_lock) { return _noLogo.Contains(Key(systemName, romName)); }
+        }
+
+        /// <summary>
+        /// EN: Toggle "no logo on top" for a game (Ctrl+D). Turning it on moves the staged logo to _cache\discarded and
+        /// stops the scrapers from fetching one; turning it off lets a logo be used/fetched again. Returns the new state.
+        /// </summary>
+        public bool ToggleNoLogo(string systemName, string romName)
+        {
+            bool nowOn;
+            lock (_lock)
+            {
+                nowOn = !_noLogo.Contains(Key(systemName, romName));
+                if (nowOn) _noLogo.Add(Key(systemName, romName)); else _noLogo.Remove(Key(systemName, romName));
+                SaveNoLogo();
+            }
+            if (nowOn) DiscardStaged(systemName, romName, hero: false, logo: true);
+            DeleteComposed(systemName, romName);
+            return nowOn;
+        }
+
+        /// <summary>
+        /// EN: Use a file chosen by the user as the game's logo (drawn on top) or background (hero). The previous staged
+        /// file of that kind is moved to _cache\discarded. Returns the new staged path, or null on failure.
+        /// </summary>
+        public string? ReplaceMedia(string systemName, string romName, string sourceFile, bool isHero)
+        {
+            try
+            {
+                if (!File.Exists(sourceFile)) return null;
+                DiscardStaged(systemName, romName, hero: isHero, logo: !isHero);
+
+                string pattern = _config.MarqueeFilePath.Replace("{system_name}", systemName).Replace("{game_name}", romName);
+                if (isHero) pattern += "-fanart";
+                string target = Path.Combine(_config.MarqueeImagePath, pattern) + Path.GetExtension(sourceFile).ToLowerInvariant();
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(sourceFile, target, overwrite: true);
+
+                if (!isHero)
+                {
+                    lock (_lock) { if (_noLogo.Remove(Key(systemName, romName))) SaveNoLogo(); }
+                }
+                DeleteComposed(systemName, romName);
+                _logger.LogInformation($"[Overrides] Using chosen {(isHero ? "background" : "logo")}: {sourceFile} -> {target}");
+                return target;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Overrides] Could not use chosen image: {ex.Message}");
+                return null;
+            }
+        }
+
+        private int DiscardStaged(string systemName, string romName, bool hero, bool logo)
+        {
+            int moved = 0;
+            try
+            {
+                string discardDir = Path.Combine(_config.MarqueeImagePath, "_cache", "discarded", Sanitize(systemName));
+                Directory.CreateDirectory(discardDir);
+                var basePath = Path.Combine(_config.MarqueeImagePath,
+                    _config.MarqueeFilePath.Replace("{system_name}", systemName).Replace("{game_name}", romName));
+
+                var bases = new List<string>();
+                if (logo) bases.Add(basePath);
+                if (hero) bases.Add(basePath + "-fanart");
+                foreach (var b in bases)
+                    foreach (var ext in _config.AcceptedFormats)
+                    {
+                        var src = $"{b}.{ext.Trim()}";
+                        if (!File.Exists(src)) continue;
+                        File.Move(src, Path.Combine(discardDir, $"{DateTime.Now:yyyyMMdd-HHmmss}-{Path.GetFileName(src)}"));
+                        moved++;
+                    }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Overrides] Discard failed: {ex.Message}");
+            }
+            return moved;
+        }
+
+        private void DeleteComposed(string systemName, string romName)
+        {
+            try
+            {
+                var cacheDir = Path.Combine(_config.CachePath, systemName);
+                if (!Directory.Exists(cacheDir)) return;
+                foreach (var f in Directory.GetFiles(cacheDir, $"{romName}_composed*"))
+                {
+                    try { File.Delete(f); } catch { /* best effort */ }
+                }
+            }
+            catch { /* best effort */ }
+        }
+
+        private void LoadNoLogo()
+        {
+            try
+            {
+                if (!File.Exists(_noLogoPath)) return;
+                var list = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(_noLogoPath));
+                if (list != null) foreach (var i in list) _noLogo.Add(i);
+            }
+            catch (Exception ex) { _logger.LogWarning($"[Overrides] Failed to load no-logo list: {ex.Message}"); }
+        }
+
+        // EN: Caller holds _lock.
+        private void SaveNoLogo()
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_noLogoPath)!);
+                File.WriteAllText(_noLogoPath, JsonSerializer.Serialize(_noLogo.ToList()));
+            }
+            catch (Exception ex) { _logger.LogWarning($"[Overrides] Failed to save no-logo list: {ex.Message}"); }
         }
 
         // ------------------------------------------------------------------ own images from roms\<system>
