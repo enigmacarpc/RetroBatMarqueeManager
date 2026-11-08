@@ -177,6 +177,10 @@ namespace RetroBatMarqueeManager.Application.Services
 
             string downloadKey = $"{systemName}_{gameName}_{mediaType}";
 
+            // EN: Without developer credentials this source cannot work: return null at once so the next source runs.
+            if (!TryGetDevCredentials(out _, out _, out _)) return null;
+            lock (_failedLock) { if (_sessionFailed.Contains(downloadKey)) return null; }
+
             // EN: If already failed in this session, do not try again (avoid "Scraping..." placeholder)
             // FR: Si déjà échoué dans cette session, ne pas retenter (évite le placeholder "Scraping...")
             lock (_failedLock)
@@ -232,6 +236,40 @@ namespace RetroBatMarqueeManager.Application.Services
             return null; // Show placeholder while downloading
         }
 
+        private static bool _devCredsWarned;
+        // EN: Games whose scrape errored this session (not saved to disk: errors may be temporary). Stops retry loops.
+        private readonly HashSet<string> _sessionFailed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// EN: ScreenScraper needs a developer ID + password for the application (ScreenScraperDevId / ScreenScraperDevPassword).
+        /// The public source only has placeholders, so without values in config.ini ScreenScraper cannot be used.
+        /// </summary>
+        private bool TryGetDevCredentials(out string devId, out string devPassword, out string softName)
+        {
+            devId = _config.ScreenScraperDevId ?? "";
+            devPassword = _config.ScreenScraperDevPassword ?? "";
+            softName = SoftName;
+            if (!string.IsNullOrWhiteSpace(devId) && !string.IsNullOrWhiteSpace(devPassword)) return true;
+
+            try
+            {
+                // EN: Built-in defaults (only present in official release builds; placeholders in the public source).
+                devId = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String("BASE64_DEV_ID_HERE"));
+                devPassword = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String("BASE64_DEV_PASSWORD_HERE"));
+                softName = "RetroBatMarqueeManager";
+                return !string.IsNullOrWhiteSpace(devId) && !string.IsNullOrWhiteSpace(devPassword);
+            }
+            catch (FormatException)
+            {
+                if (!_devCredsWarned)
+                {
+                    _devCredsWarned = true;
+                    _logger.LogWarning("[ScreenScraper] No developer credentials: set ScreenScraperDevId and ScreenScraperDevPassword in config.ini. ScreenScraper is skipped and the next source in PrioritySource is used.");
+                }
+                return false;
+            }
+        }
+
         private async Task<string?> DownloadInBackgroundAsync(string systemName, string gameName, string gamePath, string mediaType, string scrapMediaType, string cacheFilePath, string downloadKey)
         {
             // EN: Respect the API limit (adaptive based on account capacity)
@@ -265,23 +303,13 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 // Call API
                 // 1. Credentials
-                var devId = _config.ScreenScraperDevId;
-                var devPassword = _config.ScreenScraperDevPassword;
-                var softName = SoftName;
-
-                if (string.IsNullOrWhiteSpace(devId) || string.IsNullOrWhiteSpace(devPassword))
+                if (!TryGetDevCredentials(out var devId, out var devPassword, out var softName))
                 {
-                     _logger.LogInformation("[ScreenScraper] Dev credentials missing in config, using default app credentials.");
-                     // EN: Default App Credentials
-                     // FR: Identifiants par défaut de l'application
-                     devId = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String("BASE64_DEV_ID_HERE")); // TODO: Replace with new DevID Base64 if provided
-                     devPassword = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String("BASE64_DEV_PASSWORD_HERE")); // TODO: Replace with new Password Base64
-                     softName = "RetroBatMarqueeManager"; 
+                    // EN: Should not happen (checked before queuing), but never throw from here.
+                    _logger.LogWarning("[ScreenScraper] No usable developer credentials. Skipping.");
+                    return null;
                 }
-                else
-                {
-                     _logger.LogInformation($"[ScreenScraper] Using custom Dev credentials from config (SoftName: {softName})");
-                }
+                _logger.LogInformation($"[ScreenScraper] Using dev credentials (SoftName: {softName})");
 
                 var fileInfo = new FileInfo(gamePath);
                 var romSize = fileInfo.Exists ? fileInfo.Length.ToString() : "0";
@@ -446,6 +474,7 @@ namespace RetroBatMarqueeManager.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError($"Background scraping error for {gameName}: {ex.Message}");
+                lock (_failedLock) { _sessionFailed.Add(downloadKey); } // no retry loop; next source takes over
                 // Notify failure on error too
                 OnScrapeCompleted?.Invoke(systemName, gameName, null);
             }

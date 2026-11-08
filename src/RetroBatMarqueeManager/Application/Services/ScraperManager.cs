@@ -43,7 +43,17 @@ namespace RetroBatMarqueeManager.Application.Services
                 if (scraper != null)
                 {
                     // _logger.LogDebug($"[ScraperManager] Trying source: {scraperName} for {gameName}");
-                    var result = await scraper.CheckAndScrapeAsync(systemName, gameName, gamePath, mediaType);
+                    string? result;
+                    try
+                    {
+                        result = await scraper.CheckAndScrapeAsync(systemName, gameName, gamePath, mediaType);
+                    }
+                    catch (Exception ex)
+                    {
+                        // EN: A failing source must not block the ones after it.
+                        _logger.LogError($"[ScraperManager] {scraperName} failed for {gameName}: {ex.Message}. Trying next source.");
+                        continue;
+                    }
                     if (!string.IsNullOrEmpty(result))
                     {
                         _logger.LogInformation($"[ScraperManager] Found media via {scraperName} for {gameName} ({result})");
