@@ -139,6 +139,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
                 else HandlePickImage();
             };
             _inputService.OnDeleteLogo += HandleDeleteLogo;
+            _inputService.OnCycleFit += HandleCycleFit;
             _inputService.OnTrimEnd += () => HandleTrimCommand(false);
             _inputService.OnDiscardScrape += HandleDiscardScrape;
             
@@ -257,6 +258,18 @@ namespace RetroBatMarqueeManager.Application.Workflows
             _logger.LogInformation($"[Overrides] Logo {(removed ? "removed" : "restored")} for '{romName}' ({system}).");
             await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
             ShowOsd(removed ? "Logo removed (Ctrl+D again to restore)" : "Logo restored");
+        }
+
+        // EN: Ctrl+F - cycle the background fit for this game only: width -> cover -> stretch -> contain.
+        private async void HandleCycleFit()
+        {
+            _logger.LogInformation("[Overrides] Ctrl+F received.");
+            if (!TryGetCurrentGame(out var system, out var romName, "Ctrl+F")) return;
+
+            var (mode, isDefault) = _scrapeOverrides.CycleFit(system, romName);
+            _logger.LogInformation($"[Overrides] Background fit for '{romName}' ({system}): {mode}{(isDefault ? " (default)" : "")}");
+            await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
+            ShowOsd($"Background fit: {mode}{(isDefault ? " (default)" : "")}");
         }
 
         // EN: Ctrl+I - choose an image in Explorer: a logo to draw on top of the background, or a background behind the logo.

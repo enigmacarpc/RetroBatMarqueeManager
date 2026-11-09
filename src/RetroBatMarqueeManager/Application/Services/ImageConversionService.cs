@@ -1962,8 +1962,9 @@ namespace RetroBatMarqueeManager.Application.Services
             }
         }
         
-        public string GenerateComposition(string fanartPath, string logoPath, string subFolder, int offsetX = 0, int offsetY = 0, int logoOffsetX = 0, int logoOffsetY = 0, double fanartScale = 1.0, double logoScale = 1.0, bool isPreview = false)
+        public string GenerateComposition(string fanartPath, string logoPath, string subFolder, int offsetX = 0, int offsetY = 0, int logoOffsetX = 0, int logoOffsetY = 0, double fanartScale = 1.0, double logoScale = 1.0, bool isPreview = false, string? fit = null)
         {
+            string effFit = (fit ?? _config.BackgroundFit ?? "width").Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(fanartPath) || !File.Exists(fanartPath)) return logoPath;
             if (string.IsNullOrEmpty(logoPath) || !File.Exists(logoPath)) return fanartPath; 
             
@@ -2003,7 +2004,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     bool offsetsMatch = ValidateOffsetMetadata(targetPath, offsetX, offsetY, fanartScale, logoOffsetX, logoOffsetY, logoScale);
                     // EN: Also require the source images to be unchanged (user swapped/replaced a hero or logo).
                     // Cache files made before this check have no sidecar and are rebuilt once.
-                    if (offsetsMatch && !SourceSignatureMatches(targetPath, fanartPath, logoPath))
+                    if (offsetsMatch && !SourceSignatureMatches(targetPath, fanartPath, logoPath, effFit))
                     {
                         _logger.LogInformation($"[CACHE INVALID] Source image changed: {simpleName}");
                         offsetsMatch = false;
@@ -2054,7 +2055,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 var fanartW = (int)(w * fanartScale);
                 var fanartH = Math.Max(1, (int)(h * fanartScale));
                 // EN: Background fit mode (config BackgroundFit): width (default) | cover | stretch | contain
-                string fanartResize = (_config.BackgroundFit ?? "width").Trim().ToLowerInvariant() switch
+                string fanartResize = effFit switch
                 {
                     "cover" => $"{fanartW}x{fanartH}^",    // fill both directions, overflow is cropped by the canvas
                     "stretch" => $"{fanartW}x{fanartH}!",  // exactly canvas size x scale, ignores aspect ratio
@@ -2248,7 +2249,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (!isPreview)
                     {
                         SaveOffsetMetadata(targetPath, offsetX, offsetY, fanartScale, logoOffsetX, logoOffsetY, logoScale);
-                        WriteSourceSignature(targetPath, fanartPath, logoPath);
+                        WriteSourceSignature(targetPath, fanartPath, logoPath, effFit);
                     }
                     
                     return targetPath;
@@ -2446,7 +2447,7 @@ namespace RetroBatMarqueeManager.Application.Services
             }
         }
     
-    private string BuildSourceSignature(string fanartPath, string logoPath)
+    private string BuildSourceSignature(string fanartPath, string logoPath, string fit)
     {
         string One(string p)
         {
@@ -2454,25 +2455,25 @@ namespace RetroBatMarqueeManager.Application.Services
             return $"{fi.FullName}|{fi.Length}|{fi.LastWriteTimeUtc.Ticks}";
         }
         // EN: fit mode and canvas size are part of the signature so changing them rebuilds the composed pictures
-        return One(fanartPath) + "\n" + One(logoPath) + $"\nfit={_config.BackgroundFit}|{_config.MarqueeWidth}x{_config.MarqueeHeight}";
+        return One(fanartPath) + "\n" + One(logoPath) + $"\nfit={fit}|{_config.MarqueeWidth}x{_config.MarqueeHeight}";
     }
 
     private static string SourceSignaturePath(string composedFilePath) => composedFilePath + ".src";
 
-    private bool SourceSignatureMatches(string composedFilePath, string fanartPath, string logoPath)
+    private bool SourceSignatureMatches(string composedFilePath, string fanartPath, string logoPath, string fit)
     {
         try
         {
             var sig = SourceSignaturePath(composedFilePath);
             if (!File.Exists(sig)) return false;
-            return File.ReadAllText(sig) == BuildSourceSignature(fanartPath, logoPath);
+            return File.ReadAllText(sig) == BuildSourceSignature(fanartPath, logoPath, fit);
         }
         catch { return false; }
     }
 
-    private void WriteSourceSignature(string composedFilePath, string fanartPath, string logoPath)
+    private void WriteSourceSignature(string composedFilePath, string fanartPath, string logoPath, string fit)
     {
-        try { File.WriteAllText(SourceSignaturePath(composedFilePath), BuildSourceSignature(fanartPath, logoPath)); }
+        try { File.WriteAllText(SourceSignaturePath(composedFilePath), BuildSourceSignature(fanartPath, logoPath, fit)); }
         catch (Exception ex) { _logger.LogWarning($"[CACHE] Failed to write source signature: {ex.Message}"); }
     }
 

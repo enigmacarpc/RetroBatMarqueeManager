@@ -230,6 +230,7 @@ For users of **Zaccaria Pinball**, it is possible to create a virtual secondary 
 *   **Retrying missing media:** games a source could not find are remembered only until the app is closed. With `RetryMissingOnStart=true` (default, also a checkbox in the ScreenScraper tab of the menu) the saved "not found" lists (`*_failed.json`) are cleared at every app start, so games without media are searched again. With `false` they are remembered until you delete those files. Games rejected with Ctrl+Shift+R stay rejected.
 
 *   **Hotkeys while browsing games (image marquees):**
+    *   **Ctrl+F**: change the background fit for the current game only. Each press cycles `width` -> `cover` -> `stretch` -> `contain` and back. The `BackgroundFit` setting stays the default for every other game; a game that is cycled back to the default simply uses it again. Choices are saved in `medias\_cache\bg_fit.json`.
     *   **Ctrl+D**: remove the logo drawn on top of the background (use it when the background already contains a logo). Press again to bring the logo back. The scrapers will not fetch a logo for that game while it is removed.
     *   **Ctrl+I**: opens a small question (Yes = logo, No = background) and then a file picker. A chosen logo is drawn on top of the current background; a chosen background is placed behind the current logo. The previous scraped file is moved to `_cache\discarded`. (While a video is being adjusted, Ctrl+I still sets the trim start.)
     *   **Ctrl+Shift+R**: reject the scraped media of the current game (see above).

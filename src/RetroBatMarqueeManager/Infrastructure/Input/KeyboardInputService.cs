@@ -17,6 +17,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
         public event Action? OnTrimEnd;
         public event Action? OnDiscardScrape;
         public event Action? OnDeleteLogo;
+        public event Action? OnCycleFit;
+        private bool _wasFDown = false;
         private bool _wasDDown = false;
         private bool _wasRDown = false;
 
@@ -78,6 +80,15 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
                 _lastInputTime = DateTime.Now;
             }
             _wasDDown = isDDown;
+
+            // EN: Ctrl+F = cycle the background fit (width/cover/stretch/contain) for the current game (one-shot).
+            bool isFDown = (GetAsyncKeyState(0x46) & 0x8000) != 0; // VK_F
+            if (ctrlPressed && !altPressed && !shiftPressed && isFDown && !_wasFDown)
+            {
+                OnCycleFit?.Invoke();
+                _lastInputTime = DateTime.Now;
+            }
+            _wasFDown = isFDown;
             
             // EN: Check Ctrl+V for video adjustment mode (before other checks)
             // FR: Vérifier Ctrl+V pour mode ajustement vidéo (avant autres vérifications)

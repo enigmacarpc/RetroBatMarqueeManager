@@ -63,6 +63,8 @@ namespace RetroBatMarqueeManager.Application.Services
             _overridesPath = Path.Combine(Path.GetDirectoryName(_config.ConfigPath) ?? AppContext.BaseDirectory, "scraper_overrides.ini");
             _rejectedPath = Path.Combine(_config.MarqueeImagePath, "_cache", "scrape_rejected.json");
             _noLogoPath = Path.Combine(_config.MarqueeImagePath, "_cache", "no_logo.json");
+            _fitPath = Path.Combine(_config.MarqueeImagePath, "_cache", "bg_fit.json");
+            LoadFit();
             LoadRejected();
             LoadNoLogo();
             EnsureTemplate();
@@ -350,6 +352,52 @@ namespace RetroBatMarqueeManager.Application.Services
                     }
             }
             catch { /* best effort */ }
+        }
+
+        // ------------------------------------------------------------------ per-game background fit (Ctrl+F)
+
+        private readonly Dictionary<string, string> _fit = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly string _fitPath;
+        private static readonly string[] FitModes = { "width", "cover", "stretch", "contain" };
+
+        /// <summary>EN: Per-game background fit override, or null to use the config default.</summary>
+        public string? GetFit(string systemName, string romName)
+        {
+            lock (_lock) { return _fit.TryGetValue(Key(systemName, romName), out var f) ? f : null; }
+        }
+
+        /// <summary>EN: Next fit mode for this game (width, cover, stretch, contain, ...). Returns the effective mode and whether it is the default.</summary>
+        public (string Mode, bool IsDefault) CycleFit(string systemName, string romName)
+        {
+            string def = (_config.BackgroundFit ?? "width").Trim().ToLowerInvariant();
+            if (Array.IndexOf(FitModes, def) < 0) def = "width";
+            string mode;
+            lock (_lock)
+            {
+                string cur = _fit.TryGetValue(Key(systemName, romName), out var f) ? f : def;
+                int i = Array.IndexOf(FitModes, cur);
+                mode = FitModes[(i + 1) % FitModes.Length];
+                if (mode == def) _fit.Remove(Key(systemName, romName)); else _fit[Key(systemName, romName)] = mode;
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(_fitPath)!);
+                    File.WriteAllText(_fitPath, JsonSerializer.Serialize(_fit));
+                }
+                catch (Exception ex) { _logger.LogWarning($"[Overrides] Failed to save fit list: {ex.Message}"); }
+            }
+            DeleteComposed(systemName, romName);
+            return (mode, mode == def);
+        }
+
+        private void LoadFit()
+        {
+            try
+            {
+                if (!File.Exists(_fitPath)) return;
+                var d = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_fitPath));
+                if (d != null) foreach (var kv in d) _fit[kv.Key] = kv.Value;
+            }
+            catch (Exception ex) { _logger.LogWarning($"[Overrides] Failed to load fit list: {ex.Message}"); }
         }
 
         private void LoadNoLogo()

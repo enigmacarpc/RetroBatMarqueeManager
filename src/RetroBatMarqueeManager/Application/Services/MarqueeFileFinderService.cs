@@ -525,20 +525,21 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 if (backgroundInfo != null)
                 {
+                    string? bgFit = _ownImages.GetFit(effSystem, romFileName);
                     // EN: Ctrl+D: the user removed the logo drawn on top (the background already contains one). Show the background alone.
                     if (_ownImages.IsNoLogo(effSystem, romFileName))
                     {
                         _logger.LogInformation($"Marquee: background only (logo removed with Ctrl+D) for {romFileName}");
                         // EN: Compose with a transparent logo so the background is sized/cropped exactly like a normal marquee
                         //     (passing no logo would return the raw, differently sized background image).
-                        return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                        return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
                     }
 
                     var topperRaw = TryFind(romFileName, systemCandidates, "-topper", raw: true) ?? TryFind(safeRomName, systemCandidates, "-topper", raw: true) ?? TryFind(gameName, systemCandidates, "-topper", raw: true) ?? TryFind(safeGameName, systemCandidates, "-topper", raw: true);
                     if (topperRaw != null)
                     {
                          _logger.LogInformation($"Auto-Generating Marquee: Background ({_config.ComposeMedia}) {backgroundInfo} + Topper {topperRaw}");
-                         return _imageService.GenerateComposition(backgroundInfo, topperRaw, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                         return _imageService.GenerateComposition(backgroundInfo, topperRaw, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
                     }
                     
                     var basicRaw = TryFind(romFileName, systemCandidates, raw: true) ?? TryFind(safeRomName, systemCandidates, raw: true) ?? TryFind(gameName, systemCandidates, raw: true) ?? TryFind(safeGameName, systemCandidates, raw: true);
@@ -546,7 +547,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (basicRaw != null && !string.Equals(basicRaw, backgroundInfo, StringComparison.OrdinalIgnoreCase))
                     {
                          _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + Game Logo {basicRaw}");
-                         return _imageService.GenerateComposition(backgroundInfo, basicRaw, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                         return _imageService.GenerateComposition(backgroundInfo, basicRaw, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
                     }
 
                     // EN: No game logo yet: use the user's own logo from roms\{system} (gamelist.xml <wheel>/<logo>, per system)
@@ -555,11 +556,11 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (ownLogo != null && !string.Equals(ownLogo, backgroundInfo, StringComparison.OrdinalIgnoreCase))
                     {
                          _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + own logo {ownLogo}");
-                         return _imageService.GenerateComposition(backgroundInfo, ownLogo, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                         return _imageService.GenerateComposition(backgroundInfo, ownLogo, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
                     }
 
                     // EN: No game logo found anywhere: show the background alone (the system logo is no longer drawn on top).
-                    return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                    return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
                 }
             }
 
