@@ -297,6 +297,12 @@ public class Program
                     
                     if (_trayService != null)
                     {
+                        // EN: When the host stops by itself (e.g. RetroBat was closed), also end the message loop,
+                        // otherwise the process stays alive as a tray icon.
+                        // FR: Quand l'hote s'arrete (ex. RetroBat ferme), terminer aussi la boucle de messages.
+                        var hostLifetime = _host.Services.GetService<Microsoft.Extensions.Hosting.IHostApplicationLifetime>();
+                        hostLifetime?.ApplicationStopping.Register(() => System.Windows.Forms.Application.Exit());
+
                         // Tray mode: Run Windows Forms message loop (blocking until app exit)
                         System.Windows.Forms.Application.Run();
                     }
@@ -309,6 +315,8 @@ public class Program
 
                     // When message loop exits, stop the host
                     await _host.StopAsync();
+                    _trayService?.Dispose();
+                    Environment.Exit(0); // EN: make sure no leftover thread keeps the process alive
                 }
                 catch (Exception ex)
                 {
