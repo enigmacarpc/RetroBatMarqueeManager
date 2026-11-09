@@ -603,6 +603,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             chkCompose.Checked = _configManager.GetValue(_config, "Settings", "MarqueeCompose", "true") == "true";
             cboComposeMedia.SelectedItem = _configManager.GetValue(_config, "Settings", "ComposeMedia", "fanart");
             cboLayout.SelectedItem = _configManager.GetValue(_config, "Settings", "MarqueeLayout", "gradient-standard");
+            cboBackgroundFit.SelectedItem = _configManager.GetValue(_config, "Settings", "BackgroundFit", "width");
+            if (cboBackgroundFit.SelectedIndex < 0) cboBackgroundFit.SelectedItem = "width";
             chkAutoConvert.Checked = _configManager.GetValue(_config, "Settings", "MarqueeAutoConvert", "true") == "true";
             
             cboVideoGeneration.SelectedItem = _configManager.GetValue(_config, "Settings", "MarqueeVideoGeneration", "false");
@@ -716,6 +718,7 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             _configManager.SetValue(_config, "Settings", "MarqueeCompose", chkCompose.Checked.ToString().ToLower());
             _configManager.SetValue(_config, "Settings", "ComposeMedia", cboComposeMedia.SelectedItem?.ToString() ?? "fanart");
             _configManager.SetValue(_config, "Settings", "MarqueeLayout", cboLayout.SelectedItem?.ToString() ?? "gradient-standard");
+            _configManager.SetValue(_config, "Settings", "BackgroundFit", cboBackgroundFit.SelectedItem?.ToString() ?? "width");
             _configManager.SetValue(_config, "Settings", "MarqueeAutoConvert", chkAutoConvert.Checked.ToString().ToLower());
             
             _configManager.SetValue(_config, "Settings", "MarqueeVideoGeneration", cboVideoGeneration.SelectedItem?.ToString() ?? "false");

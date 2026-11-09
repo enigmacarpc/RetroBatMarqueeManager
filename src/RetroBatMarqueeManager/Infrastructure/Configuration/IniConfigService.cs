@@ -125,6 +125,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         
         // Composition Settings
         public string ComposeMedia => GetValue("ComposeMedia", "fanart"); // fanart or image
+        public string BackgroundFit => GetValue("BackgroundFit", "width");
         public string MarqueeLayout => GetValue("MarqueeLayout", "gradient-standard"); // standard, gradient-left, gradient-right, gradient-standard
 
         // DMD Settings
@@ -622,6 +623,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "MarqueeCompose", "true" },
                 { "ComposeMedia", "fanart" },
                 { "MarqueeLayout", "gradient-standard" },
+                { "BackgroundFit", "width" },
                 { "MarqueeAutoConvert", "true" },
                 { "MarqueeVideoGeneration", "false" },
                 { "MarqueeAutoScraping", "false" },
@@ -742,6 +744,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["MarqueeCompose"] = "true";
                 _settings["ComposeMedia"] = "fanart";
                 _settings["MarqueeLayout"] = "gradient-standard";
+                _settings["BackgroundFit"] = "width";
                 _settings["MarqueeAutoConvert"] = "true";
                 _settings["MarqueeVideoGeneration"] = "false"; // Added
                 _settings["GenerateMarqueeVideoFolder"] = "generated_videos"; // Added
@@ -854,6 +857,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 
                 sb.AppendLine("; Options: standard | gradient-left | gradient-right | gradient-standard");
                 WriteKey(sb, "MarqueeLayout", "gradient-standard");
+                sb.AppendLine("; How a background is fitted to the marquee: width = fill the width, crop top/bottom (default); cover = fill both directions, crop the overflow; stretch = force exactly MarqueeWidth x MarqueeHeight (distorts); contain = whole image visible, empty bars filled with the background color");
+                WriteKey(sb, "BackgroundFit", "width");
                 WriteKey(sb, "MarqueeAutoConvert", "true");
                 WriteKey(sb, "MarqueeVideoGeneration", "false"); // Added
 
@@ -1038,7 +1043,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "DmdEnabled", "DmdModel", "DmdExePath", "DmdMediaPath", "SystemCustomDMDPath", "DmdGameStartMediaPath", "DmdCompose", "DmdFormat", "DmdArguments", "DmdWidth", "DmdHeight", "DmdDotSize",
                     "ScreenNumber",
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
-                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
+                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
                     "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",

@@ -2052,13 +2052,22 @@ namespace RetroBatMarqueeManager.Application.Services
                 
                 // Apply fanart with scale
                 var fanartW = (int)(w * fanartScale);
+                var fanartH = Math.Max(1, (int)(h * fanartScale));
+                // EN: Background fit mode (config BackgroundFit): width (default) | cover | stretch | contain
+                string fanartResize = (_config.BackgroundFit ?? "width").Trim().ToLowerInvariant() switch
+                {
+                    "cover" => $"{fanartW}x{fanartH}^",    // fill both directions, overflow is cropped by the canvas
+                    "stretch" => $"{fanartW}x{fanartH}!",  // exactly canvas size x scale, ignores aspect ratio
+                    "contain" => $"{fanartW}x{fanartH}",   // whole image visible
+                    _ => $"{fanartW}x"                     // width: fill width, crop top/bottom
+                };
                 var args = new List<string>
                 {
                     "-size", $"{w}x{h}", $"xc:{bg}", // Base Canvas
                     
                     "(", 
                     fanartPath, 
-                    "-resize", $"{fanartW}x",              
+                    "-resize", fanartResize,
                     ")",
                     "-gravity", "Center",
                     "-geometry", $"{ (offsetX >= 0 ? "+" : "") }{offsetX}{ (offsetY >= 0 ? "+" : "") }{offsetY}",
@@ -2437,14 +2446,15 @@ namespace RetroBatMarqueeManager.Application.Services
             }
         }
     
-    private static string BuildSourceSignature(string fanartPath, string logoPath)
+    private string BuildSourceSignature(string fanartPath, string logoPath)
     {
         string One(string p)
         {
             var fi = new FileInfo(p);
             return $"{fi.FullName}|{fi.Length}|{fi.LastWriteTimeUtc.Ticks}";
         }
-        return One(fanartPath) + "\n" + One(logoPath);
+        // EN: fit mode and canvas size are part of the signature so changing them rebuilds the composed pictures
+        return One(fanartPath) + "\n" + One(logoPath) + $"\nfit={_config.BackgroundFit}|{_config.MarqueeWidth}x{_config.MarqueeHeight}";
     }
 
     private static string SourceSignaturePath(string composedFilePath) => composedFilePath + ".src";

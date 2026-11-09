@@ -45,6 +45,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.cboFfmpegHwEncoding = new System.Windows.Forms.ComboBox();
             this.chkAutoConvert = new System.Windows.Forms.CheckBox();
             this.cboLayout = new System.Windows.Forms.ComboBox();
+            this.cboBackgroundFit = new System.Windows.Forms.ComboBox();
+            this.lblBackgroundFit = new System.Windows.Forms.Label();
             this.cboComposeMedia = new System.Windows.Forms.ComboBox();
             this.chkCompose = new System.Windows.Forms.CheckBox();
             this.txtBackgroundColor = new System.Windows.Forms.TextBox();
@@ -1076,6 +1078,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.groupMarquee.Controls.Add(this.lblVideoGeneration);
             this.groupMarquee.Controls.Add(this.chkAutoConvert);
             this.groupMarquee.Controls.Add(this.cboLayout);
+            this.groupMarquee.Controls.Add(this.cboBackgroundFit);
+            this.groupMarquee.Controls.Add(this.lblBackgroundFit);
             this.groupMarquee.Controls.Add(this.lblLayout);
             this.groupMarquee.Controls.Add(this.cboComposeMedia);
             this.groupMarquee.Controls.Add(this.lblComposeMedia);
@@ -1107,6 +1111,33 @@ namespace RetroBatMarqueeManager.Launcher.Forms
             this.lblVideoGeneration.Size = new System.Drawing.Size(101, 15);
             this.lblVideoGeneration.TabIndex = 8;
             this.lblVideoGeneration.Text = "Video Generation:";
+            // 
+            // lblBackgroundFit
+            // 
+            this.lblBackgroundFit.AutoSize = true;
+            this.lblBackgroundFit.Location = new System.Drawing.Point(400, 118);
+            this.lblBackgroundFit.Name = "lblBackgroundFit";
+            this.lblBackgroundFit.Size = new System.Drawing.Size(90, 15);
+            this.lblBackgroundFit.TabIndex = 30;
+            this.lblBackgroundFit.Text = "Background Fit:";
+            // 
+            // cboBackgroundFit
+            // 
+            this.cboBackgroundFit.BackColor = System.Drawing.Color.White;
+            this.cboBackgroundFit.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboBackgroundFit.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cboBackgroundFit.ForeColor = System.Drawing.Color.Black;
+            this.cboBackgroundFit.FormattingEnabled = true;
+            this.cboBackgroundFit.Items.AddRange(new object[] {
+            "width",
+            "cover",
+            "stretch",
+            "contain"});
+            this.cboBackgroundFit.Location = new System.Drawing.Point(510, 115);
+            this.cboBackgroundFit.Name = "cboBackgroundFit";
+            this.cboBackgroundFit.Size = new System.Drawing.Size(140, 23);
+            this.cboBackgroundFit.TabIndex = 31;
+            this.toolTipHint.SetToolTip(this.cboBackgroundFit, "How a background is fitted to the marquee size. (EN)\nwidth: fill the width, crop top/bottom (default)\ncover: fill both directions, crop the overflow\nstretch: force exactly the marquee size (distorts the image)\ncontain: show the whole image\nAdapte le fond a la taille du marquee. (FR)");
             // 
             // lblLayout
             // 
@@ -2732,6 +2763,8 @@ namespace RetroBatMarqueeManager.Launcher.Forms
         private System.Windows.Forms.Label lbl_ffmpeg_hw_encoding;
         private System.Windows.Forms.CheckBox chkAutoConvert;
         private System.Windows.Forms.ComboBox cboLayout;
+        private System.Windows.Forms.ComboBox cboBackgroundFit;
+        private System.Windows.Forms.Label lblBackgroundFit;
         private System.Windows.Forms.Label lblLayout;
         private System.Windows.Forms.ComboBox cboComposeMedia;
         private System.Windows.Forms.Label lblComposeMedia;
