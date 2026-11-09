@@ -529,7 +529,9 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (_ownImages.IsNoLogo(effSystem, romFileName))
                     {
                         _logger.LogInformation($"Marquee: background only (logo removed with Ctrl+D) for {romFileName}");
-                        return _imageService.GenerateComposition(backgroundInfo, "", system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                        // EN: Compose with a transparent logo so the background is sized/cropped exactly like a normal marquee
+                        //     (passing no logo would return the raw, differently sized background image).
+                        return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
                     }
 
                     var topperRaw = TryFind(romFileName, systemCandidates, "-topper", raw: true) ?? TryFind(safeRomName, systemCandidates, "-topper", raw: true) ?? TryFind(gameName, systemCandidates, "-topper", raw: true) ?? TryFind(safeGameName, systemCandidates, "-topper", raw: true);
@@ -557,7 +559,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     }
 
                     // EN: No game logo found anywhere: show the background alone (the system logo is no longer drawn on top).
-                    return _imageService.GenerateComposition(backgroundInfo, "", system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
+                    return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
                 }
             }
 
@@ -1563,6 +1565,21 @@ namespace RetroBatMarqueeManager.Application.Services
         /// FR: Extraire le vrai dossier système depuis le chemin ROM
         /// Example: S:/RetroBat7.x_test/roms/mame/bbredux.zip -> "mame"
         /// </summary>
+        // EN: A fully transparent PNG, one per game (the composed cache file is named after the logo file).
+        private string EnsureBlankLogo(string romFileName)
+        {
+            string dir = Path.Combine(_config.CachePath, "_nologo");
+            Directory.CreateDirectory(dir);
+            string safe = new string(romFileName.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c).ToArray());
+            string path = Path.Combine(dir, safe + "-nologo.png");
+            if (!File.Exists(path))
+            {
+                using var bmp = new System.Drawing.Bitmap(64, 64, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            }
+            return path;
+        }
+
         private string? ExtractSystemFromRomPath(string romPath)
         {
             if (string.IsNullOrEmpty(romPath)) return null;

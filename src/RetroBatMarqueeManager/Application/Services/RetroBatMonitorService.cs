@@ -16,7 +16,8 @@ namespace RetroBatMarqueeManager.Application.Services
         private readonly ILogger<RetroBatMonitorService> _logger;
         private readonly IHostApplicationLifetime _appLifetime;
         private readonly IConfigService _config;
-        private static readonly string[] ProcessNames = { "emulationstation", "retrobat" };
+        private string[] _processNames = { "emulationstation", "retrobat" };
+        private string _lastSeen = "";
         private const int CheckIntervalMs = 2000;
 
         private DateTime? _missingSince = null;
@@ -28,20 +29,27 @@ namespace RetroBatMarqueeManager.Application.Services
             _config = config;
         }
 
-        private static bool IsRetroBatRunning()
+        // EN: Returns the running RetroBat processes ("name(pid)") or an empty list.
+        private List<string> RunningRetroBatProcesses()
         {
-            foreach (var name in ProcessNames)
+            var found = new List<string>();
+            foreach (var name in _processNames)
             {
-                var processes = Process.GetProcessesByName(name);
-                bool any = processes.Length > 0;
-                foreach (var p in processes) p.Dispose();
-                if (any) return true;
+                foreach (var p in Process.GetProcessesByName(name))
+                {
+                    found.Add($"{name}({p.Id})");
+                    p.Dispose();
+                }
             }
-            return false;
+            return found;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _processNames = _config.RetroBatProcessNames
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(n => n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? n[..^4] : n)
+                .ToArray();
             int grace = _config.RetroBatExitGraceSeconds;
             if (grace <= 0)
             {
@@ -49,7 +57,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 return;
             }
 
-            _logger.LogInformation($"RetroBat Monitor started. Closing {grace}s after RetroBat has closed.");
+            _logger.LogInformation($"RetroBat Monitor started. Watching: {string.Join(", ", _processNames)}. Closing {grace}s after they have all closed.");
 
             // Initial delay to let RetroBat start if launched together
             await Task.Delay(10000, stoppingToken);
@@ -58,7 +66,15 @@ namespace RetroBatMarqueeManager.Application.Services
             {
                 try
                 {
-                    if (IsRetroBatRunning())
+                    var running = RunningRetroBatProcesses();
+                    string seen = string.Join(", ", running);
+                    if (seen != _lastSeen)
+                    {
+                        _lastSeen = seen;
+                        _logger.LogInformation($"RetroBat processes now running: {(seen.Length == 0 ? "none" : seen)}");
+                    }
+
+                    if (running.Count > 0)
                     {
                         if (_missingSince != null)
                         {

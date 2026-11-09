@@ -238,3 +238,4 @@ For users of **Zaccaria Pinball**, it is possible to create a virtual secondary 
 *   **Closing with RetroBat:** the app closes itself `RetroBatExitGraceSeconds` seconds (default 5, `0` = never) after both EmulationStation and the RetroBat launcher have closed. No separate script is needed.
 *   **Own images as fallback:** when no scraper provides a background or logo, the app uses your own images from `roms\<system>` (gamelist.xml first, then `downloaded_images`, `images`, `media\...`). A missing logo is no longer replaced by the system logo; the background is shown alone.
 *   **Ctrl+I** opens one small window with **Logo**, **Background** and **Cancel**, then the Explorer picker.
+*   `RetroBatProcessNames` (default `emulationstation,retrobat`) lists the process names that count as "RetroBat is running". If the app does not close, remove a name that stays alive after RetroBat is closed; the log line `RetroBat processes now running:` shows what was seen.

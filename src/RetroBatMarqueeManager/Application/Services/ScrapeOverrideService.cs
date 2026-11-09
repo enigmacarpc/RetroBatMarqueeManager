@@ -343,10 +343,11 @@ namespace RetroBatMarqueeManager.Application.Services
                 // EN: The composed cache folder is named after the frontend's system (may differ from the real folder name,
                 // e.g. gw / gameandwatch), so look in every system folder.
                 if (!Directory.Exists(_config.CachePath)) return;
-                foreach (var f in Directory.GetFiles(_config.CachePath, $"{romName}_composed*", SearchOption.AllDirectories))
-                {
-                    try { File.Delete(f); } catch { /* best effort */ }
-                }
+                foreach (var pattern in new[] { $"{romName}_composed*", $"{romName}-nologo_composed*" })
+                    foreach (var f in Directory.GetFiles(_config.CachePath, pattern, SearchOption.AllDirectories))
+                    {
+                        try { File.Delete(f); } catch { /* best effort */ }
+                    }
             }
             catch { /* best effort */ }
         }

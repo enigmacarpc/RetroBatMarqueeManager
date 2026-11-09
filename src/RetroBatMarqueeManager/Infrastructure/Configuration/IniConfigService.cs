@@ -181,6 +181,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         // ScreenScraper Settings
         // EN: Auto-scraping from ScreenScraper API
         // FR: Scraping automatique depuis l'API ScreenScraper
+        public string RetroBatProcessNames => GetValue("RetroBatProcessNames", "emulationstation,retrobat");
         public int RetroBatExitGraceSeconds => int.TryParse(GetValue("RetroBatExitGraceSeconds", "5"), out var n) && n >= 0 ? n : 5;
         public bool MarqueeAutoScraping => GetValue("MarqueeAutoScraping", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
         public bool RetryMissingOnStart => GetValue("RetryMissingOnStart", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -625,6 +626,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "MarqueeVideoGeneration", "false" },
                 { "MarqueeAutoScraping", "false" },
                 { "RetroBatExitGraceSeconds", "5" },
+                { "RetroBatProcessNames", "emulationstation,retrobat" },
                 { "MPVScrapMediaType", "" },
                 { "DMDScrapMediaType", "" },
                 { "ScreenScraperUser", "" },
@@ -746,6 +748,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["FfmpegHwEncoding"] = ""; // Added
                 _settings["MarqueeAutoScraping"] = "false";
                 _settings["RetroBatExitGraceSeconds"] = "5";
+                _settings["RetroBatProcessNames"] = "emulationstation,retrobat";
                 _settings["MPVScrapMediaType"] = "";
                 _settings["DMDScrapMediaType"] = "";
                 _settings["ScreenScraperUser"] = "";
@@ -838,6 +841,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
 
                 sb.AppendLine("; Close RetroBatMarqueeManager.App.exe this many seconds after RetroBat (EmulationStation / retrobat.exe) has closed. 0 = never close automatically.");
                 WriteKey(sb, "RetroBatExitGraceSeconds", "5");
+                sb.AppendLine("; Process names (without .exe) that mean RetroBat is still running. Remove one if it stays alive after you close RetroBat.");
+                WriteKey(sb, "RetroBatProcessNames", "emulationstation,retrobat");
 
                 sb.AppendLine("; Marquee Settings");
                 WriteKey(sb, "MarqueeBackgroundColor", "Black");
@@ -1033,7 +1038,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "DmdEnabled", "DmdModel", "DmdExePath", "DmdMediaPath", "SystemCustomDMDPath", "DmdGameStartMediaPath", "DmdCompose", "DmdFormat", "DmdArguments", "DmdWidth", "DmdHeight", "DmdDotSize",
                     "ScreenNumber",
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
-                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
+                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
                     "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",

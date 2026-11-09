@@ -45,6 +45,7 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         string FfmpegHwEncoding { get; }
         bool MarqueeCompose { get; }
         bool MarqueeAutoScraping { get; }
+        string RetroBatProcessNames { get; } // EN: comma list of process names that mean "RetroBat is running" (no .exe)
         int RetroBatExitGraceSeconds { get; } // EN: close this app N seconds after RetroBat has closed (0 = never) / FR: fermer l'application N secondes après la fermeture de RetroBat
         string MPVScrapMediaType { get; }
         string DMDScrapMediaType { get; }
