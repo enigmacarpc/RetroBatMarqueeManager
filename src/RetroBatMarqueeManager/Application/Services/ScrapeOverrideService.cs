@@ -379,7 +379,7 @@ namespace RetroBatMarqueeManager.Application.Services
         private static readonly string[] HeroMediaDirs = { "images", "media\\fanart", "media\\fanarts", "fanart", "downloaded_images" };
         private static readonly string[] LogoMediaDirs = { "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos", "downloaded_images" };
         private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero" };
-        private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo" };
+        private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo", "-marquee" }; // EN: "-marquee" last: RetroBat saves the scraped logo/wheel under that name
 
         /// <summary>
         /// EN: Copy the user's own hero/logo into the staging folder as {rom}-fanart / {rom}. Looks in
@@ -393,7 +393,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
             var entry = ReadGamelistEntry(systemDir, romName);
             string? hero = FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
-            string? logo = FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo"), LogoMediaDirs, LogoSuffixes, romName);
+            string? logo = FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo") ?? entry.GetValueOrDefault("marquee"), LogoMediaDirs, LogoSuffixes, romName);
 
             int count = 0;
             if (hero != null && CopyToStaging(hero, systemName, romName, isHero: true)) count++;
@@ -428,7 +428,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 string systemDir = Path.Combine(_config.RomsPath, systemName);
                 if (!Directory.Exists(systemDir)) return null;
                 var entry = ReadGamelistEntry(systemDir, romName);
-                return FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo"), LogoMediaDirs, LogoSuffixes, romName);
+                return FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo") ?? entry.GetValueOrDefault("marquee"), LogoMediaDirs, LogoSuffixes, romName);
             }
             catch { return null; }
         }
@@ -459,7 +459,7 @@ namespace RetroBatMarqueeManager.Application.Services
                             if (string.IsNullOrWhiteSpace(path)) continue;
                             string stem = Path.GetFileNameWithoutExtension(path.Replace('/', '\\'));
                             var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                            foreach (var tag in new[] { "fanart", "wheel", "logo" })
+                            foreach (var tag in new[] { "fanart", "wheel", "logo", "marquee" })
                             {
                                 var v = game.Element(tag)?.Value?.Trim();
                                 if (!string.IsNullOrEmpty(v)) tags[tag] = v;
