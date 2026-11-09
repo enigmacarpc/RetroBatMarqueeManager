@@ -515,10 +515,17 @@ namespace RetroBatMarqueeManager.Application.Services
                     backgroundInfo = TryFindFanart(romFileName, systemCandidates) ?? TryFindFanart(safeRomName, systemCandidates) ?? TryFindFanart(gameName, systemCandidates) ?? TryFindFanart(safeGameName, systemCandidates);
                 }
 
+                // EN: Nothing scraped/staged: use the user's own background from roms\{system} (gamelist.xml / downloaded_images / images ...).
+                string effSystem = string.IsNullOrEmpty(realSystemFromPath) ? system : realSystemFromPath;
+                if (backgroundInfo == null)
+                {
+                    backgroundInfo = _ownImages.FindOwnHero(effSystem, romFileName);
+                    if (backgroundInfo != null) _logger.LogInformation($"Using own background from roms folder: {backgroundInfo}");
+                }
+
                 if (backgroundInfo != null)
                 {
                     // EN: Ctrl+D: the user removed the logo drawn on top (the background already contains one). Show the background alone.
-                    string effSystem = string.IsNullOrEmpty(realSystemFromPath) ? system : realSystemFromPath;
                     if (_ownImages.IsNoLogo(effSystem, romFileName))
                     {
                         _logger.LogInformation($"Marquee: background only (logo removed with Ctrl+D) for {romFileName}");
@@ -549,14 +556,7 @@ namespace RetroBatMarqueeManager.Application.Services
                          return _imageService.GenerateComposition(backgroundInfo, ownLogo, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
                     }
 
-                    var systemLogoRaw = FindSystemMarquee(system, raw: true);
-                    
-                    if (systemLogoRaw != null && systemLogoRaw != _config.DefaultImagePath)
-                    {
-                         _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + System {systemLogoRaw}");
-                         return _imageService.GenerateComposition(backgroundInfo, systemLogoRaw, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
-                    }
-                    
+                    // EN: No game logo found anywhere: show the background alone (the system logo is no longer drawn on top).
                     return _imageService.GenerateComposition(backgroundInfo, "", system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview);
                 }
             }

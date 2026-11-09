@@ -271,48 +271,13 @@ namespace RetroBatMarqueeManager.Application.Workflows
             {
                 string initialDir = Path.Combine(_config.RomsPath, system, "downloaded_images");
                 if (!Directory.Exists(initialDir)) initialDir = Path.Combine(_config.RomsPath, system);
-                var formats = _config.AcceptedFormats.Select(f => "*." + f.Trim().TrimStart('.')).ToList();
-
-                (string? File, bool IsHero) pick = await Task.Run(() =>
-                {
-                    string? chosen = null;
-                    bool hero = false;
-                    var t = new Thread(() =>
-                    {
-                        // EN: hidden top-most owner so the dialogs come to the front over the frontend
-                        using var owner = new System.Windows.Forms.Form
-                        {
-                            TopMost = true, ShowInTaskbar = false, FormBorderStyle = System.Windows.Forms.FormBorderStyle.None,
-                            StartPosition = System.Windows.Forms.FormStartPosition.Manual, Location = new System.Drawing.Point(-32000, -32000), Size = new System.Drawing.Size(1, 1)
-                        };
-                        owner.Show();
-                        var answer = System.Windows.Forms.MessageBox.Show(owner,
-                            $"Add an image for '{romName}'.\n\nYES = LOGO (drawn on top of the background)\nNO = BACKGROUND (placed behind the logo)\nCANCEL = nothing",
-                            "Add image", System.Windows.Forms.MessageBoxButtons.YesNoCancel, System.Windows.Forms.MessageBoxIcon.Question);
-                        if (answer == System.Windows.Forms.DialogResult.Cancel) return;
-                        hero = answer == System.Windows.Forms.DialogResult.No;
-
-                        using var dlg = new System.Windows.Forms.OpenFileDialog
-                        {
-                            Title = hero ? $"Choose the BACKGROUND for {romName}" : $"Choose the LOGO for {romName}",
-                            InitialDirectory = initialDir,
-                            Filter = $"Images ({string.Join(", ", formats)})|{string.Join(";", formats)}|All files (*.*)|*.*",
-                            CheckFileExists = true,
-                            RestoreDirectory = true
-                        };
-                        if (dlg.ShowDialog(owner) == System.Windows.Forms.DialogResult.OK) chosen = dlg.FileName;
-                    });
-                    t.SetApartmentState(ApartmentState.STA);
-                    t.Start();
-                    t.Join();
-                    return (chosen, hero);
-                });
+                var pick = await Task.Run(() => ImagePickerDialog.Pick(romName, initialDir, _config.AcceptedFormats));
 
                 if (pick.File == null) { _logger.LogInformation("[Overrides] Image picker cancelled."); return; }
 
-                var target = _scrapeOverrides.ReplaceMedia(system, romName, pick.File, pick.IsHero);
+                var target = _scrapeOverrides.ReplaceMedia(system, romName, pick.File, pick.IsBackground);
                 await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
-                ShowOsd(target != null ? (pick.IsHero ? "Background replaced" : "Logo replaced") : "Could not use that image");
+                ShowOsd(target != null ? (pick.IsBackground ? "Background replaced" : "Logo replaced") : "Could not use that image");
             }
             catch (Exception ex)
             {

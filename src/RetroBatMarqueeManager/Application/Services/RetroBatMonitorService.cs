@@ -1,28 +1,55 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using RetroBatMarqueeManager.Core.Interfaces;
 
 namespace RetroBatMarqueeManager.Application.Services
 {
+    /// <summary>
+    /// EN: Closes the application shortly after RetroBat is closed. RetroBat counts as running while EmulationStation
+    /// OR the RetroBat launcher process exists (the launcher stays alive while a game runs).
+    /// The delay is RetroBatExitGraceSeconds in config.ini (default 15, 0 = never close automatically).
+    /// FR: Ferme l'application peu après la fermeture de RetroBat.
+    /// </summary>
     public class RetroBatMonitorService : BackgroundService
     {
         private readonly ILogger<RetroBatMonitorService> _logger;
         private readonly IHostApplicationLifetime _appLifetime;
-        private const string ProcessName = "emulationstation";
-        private const int CheckIntervalMs = 30000; // Check every 30 seconds
-        private const int GracePeriodMinutes = 5;
+        private readonly IConfigService _config;
+        private static readonly string[] ProcessNames = { "emulationstation", "retrobat" };
+        private const int CheckIntervalMs = 2000;
 
         private DateTime? _missingSince = null;
 
-        public RetroBatMonitorService(ILogger<RetroBatMonitorService> logger, IHostApplicationLifetime appLifetime)
+        public RetroBatMonitorService(ILogger<RetroBatMonitorService> logger, IHostApplicationLifetime appLifetime, IConfigService config)
         {
             _logger = logger;
             _appLifetime = appLifetime;
+            _config = config;
+        }
+
+        private static bool IsRetroBatRunning()
+        {
+            foreach (var name in ProcessNames)
+            {
+                var processes = Process.GetProcessesByName(name);
+                bool any = processes.Length > 0;
+                foreach (var p in processes) p.Dispose();
+                if (any) return true;
+            }
+            return false;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("RetroBat Monitor Service started. Monitoring 'emulationstation' process.");
+            int grace = _config.RetroBatExitGraceSeconds;
+            if (grace <= 0)
+            {
+                _logger.LogInformation("RetroBat Monitor disabled (RetroBatExitGraceSeconds=0).");
+                return;
+            }
+
+            _logger.LogInformation($"RetroBat Monitor started. Closing {grace}s after RetroBat has closed.");
 
             // Initial delay to let RetroBat start if launched together
             await Task.Delay(10000, stoppingToken);
@@ -31,10 +58,7 @@ namespace RetroBatMarqueeManager.Application.Services
             {
                 try
                 {
-                    var processes = Process.GetProcessesByName(ProcessName);
-                    bool isRunning = processes.Length > 0;
-
-                    if (isRunning)
+                    if (IsRetroBatRunning())
                     {
                         if (_missingSince != null)
                         {
@@ -42,23 +66,16 @@ namespace RetroBatMarqueeManager.Application.Services
                             _missingSince = null;
                         }
                     }
-                    else
+                    else if (_missingSince == null)
                     {
-                        if (_missingSince == null)
-                        {
-                            _missingSince = DateTime.Now;
-                            _logger.LogWarning($"RetroBat process not found. Grace period started ({GracePeriodMinutes} min).");
-                        }
-                        else
-                        {
-                            var timeMissing = DateTime.Now - _missingSince.Value;
-                            if (timeMissing.TotalMinutes >= GracePeriodMinutes)
-                            {
-                                _logger.LogWarning($"RetroBat has been missing for {timeMissing.TotalMinutes:F1} minutes. Initiating application shutdown.");
-                                _appLifetime.StopApplication();
-                                return; // Exit loop
-                            }
-                        }
+                        _missingSince = DateTime.Now;
+                        _logger.LogWarning($"RetroBat process not found. Closing in {grace}s unless it comes back.");
+                    }
+                    else if ((DateTime.Now - _missingSince.Value).TotalSeconds >= grace)
+                    {
+                        _logger.LogWarning("RetroBat is closed. Shutting down.");
+                        _appLifetime.StopApplication();
+                        return;
                     }
                 }
                 catch (Exception ex)

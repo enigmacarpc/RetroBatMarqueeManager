@@ -408,6 +408,21 @@ namespace RetroBatMarqueeManager.Application.Services
         }
 
         /// <summary>
+        /// EN: The user's own hero/background for a game from roms\{system} (gamelist.xml fanart tag first, then usual folders), or null.
+        /// </summary>
+        public string? FindOwnHero(string systemName, string romName)
+        {
+            try
+            {
+                string systemDir = Path.Combine(_config.RomsPath, systemName);
+                if (!Directory.Exists(systemDir)) return null;
+                var entry = ReadGamelistEntry(systemDir, romName);
+                return FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
         /// EN: The user's own logo for a game from roms\{system} (gamelist.xml wheel/logo tag first, then usual folders), or null.
         /// Used directly (not copied) when composing a marquee that has no game logo yet.
         /// </summary>

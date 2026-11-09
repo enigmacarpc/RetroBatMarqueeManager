@@ -234,3 +234,7 @@ For users of **Zaccaria Pinball**, it is possible to create a virtual secondary 
     *   **Ctrl+I**: opens a small question (Yes = logo, No = background) and then a file picker. A chosen logo is drawn on top of the current background; a chosen background is placed behind the current logo. The previous scraped file is moved to `_cache\discarded`. (While a video is being adjusted, Ctrl+I still sets the trim start.)
     *   **Ctrl+Shift+R**: reject the scraped media of the current game (see above).
     *   A short on-screen message confirms each action.
+
+*   **Closing with RetroBat:** the app closes itself `RetroBatExitGraceSeconds` seconds (default 15, `0` = never) after both EmulationStation and the RetroBat launcher have closed. No separate script is needed.
+*   **Own images as fallback:** when no scraper provides a background or logo, the app uses your own images from `roms\<system>` (gamelist.xml first, then `downloaded_images`, `images`, `media\...`). A missing logo is no longer replaced by the system logo; the background is shown alone.
+*   **Ctrl+I** opens one small window with **Logo**, **Background** and **Cancel**, then the Explorer picker.
