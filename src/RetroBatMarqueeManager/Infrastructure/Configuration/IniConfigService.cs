@@ -181,7 +181,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         // ScreenScraper Settings
         // EN: Auto-scraping from ScreenScraper API
         // FR: Scraping automatique depuis l'API ScreenScraper
-        public int RetroBatExitGraceSeconds => int.TryParse(GetValue("RetroBatExitGraceSeconds", "15"), out var n) && n >= 0 ? n : 15;
+        public int RetroBatExitGraceSeconds => int.TryParse(GetValue("RetroBatExitGraceSeconds", "5"), out var n) && n >= 0 ? n : 5;
         public bool MarqueeAutoScraping => GetValue("MarqueeAutoScraping", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
         public bool RetryMissingOnStart => GetValue("RetryMissingOnStart", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
         public bool MarqueeGlobalScraping => GetValue("MarqueeGlobalScraping", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -624,7 +624,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "MarqueeAutoConvert", "true" },
                 { "MarqueeVideoGeneration", "false" },
                 { "MarqueeAutoScraping", "false" },
-                { "RetroBatExitGraceSeconds", "15" },
+                { "RetroBatExitGraceSeconds", "5" },
                 { "MPVScrapMediaType", "" },
                 { "DMDScrapMediaType", "" },
                 { "ScreenScraperUser", "" },
@@ -745,7 +745,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["GenerateMarqueeVideoFolder"] = "generated_videos"; // Added
                 _settings["FfmpegHwEncoding"] = ""; // Added
                 _settings["MarqueeAutoScraping"] = "false";
-                _settings["RetroBatExitGraceSeconds"] = "15";
+                _settings["RetroBatExitGraceSeconds"] = "5";
                 _settings["MPVScrapMediaType"] = "";
                 _settings["DMDScrapMediaType"] = "";
                 _settings["ScreenScraperUser"] = "";
@@ -836,6 +836,9 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 WriteKey(sb, "RomsPath", @"C:\RetroBat\roms", true);
                 WriteKey(sb, "IMPath", @"tools\imagemagick\convert.exe");
 
+                sb.AppendLine("; Close RetroBatMarqueeManager.App.exe this many seconds after RetroBat (EmulationStation / retrobat.exe) has closed. 0 = never close automatically.");
+                WriteKey(sb, "RetroBatExitGraceSeconds", "5");
+
                 sb.AppendLine("; Marquee Settings");
                 WriteKey(sb, "MarqueeBackgroundColor", "Black");
                 WriteKey(sb, "MarqueeBackgroundCodeColor", "#000000");
@@ -892,8 +895,6 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("[ScrapersSource]");
                 sb.AppendLine("; Master switch for scraping (true/false)");
                 WriteKey(sb, "MarqueeAutoScraping", "false");
-                sb.AppendLine("; Close this application this many seconds after RetroBat (EmulationStation) has closed. 0 = never close automatically.");
-                WriteKey(sb, "RetroBatExitGraceSeconds", "15");
                 sb.AppendLine("; List EVERY scraper you want to use, in order, separated by commas (ScreenScraper, arcadeitalia, SteamGridDB, Steam, IGDB).");
                 sb.AppendLine("; Only the sources listed here are used. Example: PrioritySource=SteamGridDB, IGDB, arcadeitalia, Steam");
                 WriteKey(sb, "PrioritySource", "");

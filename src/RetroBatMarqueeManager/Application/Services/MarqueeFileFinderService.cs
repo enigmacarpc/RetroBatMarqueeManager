@@ -1573,7 +1573,11 @@ namespace RetroBatMarqueeManager.Application.Services
             try
             {
                 var parts = romPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-                var romsIndex = Array.FindLastIndex(parts, p => p.Equals("roms", StringComparison.OrdinalIgnoreCase));
+                // EN: First "roms" folder that is followed by a system folder AND a file/sub-folder. Using the LAST "roms"
+                // picked the ROM file name for paths like ...\roms\xbox\roms\Game.iso (nested "roms" folder).
+                // FR: Premier dossier "roms" suivi d'un dossier système ET d'un fichier (évite les dossiers "roms" imbriqués).
+                var romsIndex = Array.FindIndex(parts, p => p.Equals("roms", StringComparison.OrdinalIgnoreCase));
+                if (romsIndex >= 0 && romsIndex + 2 >= parts.Length) romsIndex = -1;
                 
                 if (romsIndex >= 0 && romsIndex + 1 < parts.Length)
                 {
