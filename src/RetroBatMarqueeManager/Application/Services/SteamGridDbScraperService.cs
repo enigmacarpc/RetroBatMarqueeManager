@@ -116,7 +116,7 @@ namespace RetroBatMarqueeManager.Application.Services
             foreach (var (wanted, asset) in new[] { (wantHero, Asset.Hero), (wantLogo, Asset.Logo) })
             {
                 if (!wanted) continue;
-                if (AssetExists(asset, systemName, romName)) { anyExists = true; continue; }
+                if (AssetExists(asset, systemName, romName) || (asset == Asset.Logo && _overrides.FindOwnLogo(systemName, romName) != null)) { anyExists = true; continue; }
                 if (!IsFailed(asset, systemName, romName)) return false; // not settled yet
                 if (asset == Asset.Hero) heroMissing = true;
             }
@@ -202,6 +202,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private bool NeedsDownload(Asset asset, string systemName, string romName)
         {
+            if (asset == Asset.Logo && _overrides.FindOwnLogo(systemName, romName) != null) return false; // EN: the user's own logo is already there
             return !AssetExists(asset, systemName, romName) && !IsFailed(asset, systemName, romName);
         }
 
