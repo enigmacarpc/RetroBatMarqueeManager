@@ -14,9 +14,12 @@ namespace RetroBatMarqueeManager.Application.Services
         private readonly IEnumerable<IScraperService> _scrapers;
         private readonly IConfigService _config;
         private readonly ILogger<ScraperManager> _logger;
+        private readonly ScrapeOverrideService _own;
+        private readonly HashSet<string> _loggedOwn = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        public ScraperManager(IEnumerable<IScraperService> scrapers, IConfigService config, ILogger<ScraperManager> logger)
+        public ScraperManager(IEnumerable<IScraperService> scrapers, IConfigService config, ILogger<ScraperManager> logger, ScrapeOverrideService own)
         {
+            _own = own;
             _scrapers = scrapers;
             _config = config;
             _logger = logger;
@@ -38,6 +41,16 @@ namespace RetroBatMarqueeManager.Application.Services
 
         public async Task<string?> CheckAndScrapeAsync(string systemName, string gameName, string gamePath, string mediaType)
         {
+            // EN: The user already has a background and a logo in roms\<system> (gamelist.xml / downloaded_images):
+            //     nothing to scrape, so no scraper runs and no "Scraping..." screen is shown.
+            string ownRom = !string.IsNullOrEmpty(gamePath) ? System.IO.Path.GetFileNameWithoutExtension(gamePath) : gameName;
+            if (_own.HasCompleteOwnMedia(systemName, ownRom) && _own.Get(systemName, ownRom) == null)
+            {
+                if (_loggedOwn.Add(systemName + "|" + ownRom))
+                    _logger.LogInformation($"[ScraperManager] {ownRom} ({systemName}) already has its own background and logo; not scraping.");
+                return null;
+            }
+
             var priorities = _config.ScraperPriorities;
             
             // Iterate through configured priorities

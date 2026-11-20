@@ -521,6 +521,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 {
                     backgroundInfo = _ownImages.FindOwnHero(effSystem, romFileName);
                     if (backgroundInfo != null) _logger.LogInformation($"Using own background from roms folder: {backgroundInfo}");
+                    else _ownImages.LogMissingHeroHint(effSystem, romFileName);
                 }
 
                 if (backgroundInfo != null)

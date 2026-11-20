@@ -426,7 +426,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private static readonly string[] HeroMediaDirs = { "images", "media\\fanart", "media\\fanarts", "fanart", "downloaded_images" };
         private static readonly string[] LogoMediaDirs = { "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos", "downloaded_images" };
-        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero" };
+        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero", "-image", "_image", "-thumb", "-mix" };
         private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo", "-marquee" }; // EN: "-marquee" last: RetroBat saves the scraped logo/wheel under that name
 
         /// <summary>
@@ -544,7 +544,75 @@ namespace RetroBatMarqueeManager.Application.Services
                         string candidate = Path.Combine(systemDir, dir, $"{romName}{suffix}.{ext.Trim()}");
                         if (File.Exists(candidate)) return candidate;
                     }
+            // EN: 3. tolerant match: ignore case, spaces, punctuation and accents-free symbols in the file name
+            //     (rom "Game - Title (2020)" vs file "Game_Title_2020-fanart.png").
+            string wanted = Norm(romName);
+            if (wanted.Length > 0)
+            {
+                var wantedNames = suffixes.Select(s => wanted + Norm(s)).ToList();
+                foreach (var dir in dirs)
+                {
+                    string d = Path.Combine(systemDir, dir);
+                    foreach (var f in ListDir(d))
+                    {
+                        if (!IsAccepted(f)) continue;
+                        string stem = Norm(Path.GetFileNameWithoutExtension(f));
+                        if (wantedNames.Contains(stem)) return f;
+                    }
+                }
+            }
             return null;
+        }
+
+        private readonly HashSet<string> _hintLogged = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>EN: Diagnostic, logged once per game: files in the usual media folders that look like they belong to this game.</summary>
+        public void LogMissingHeroHint(string systemName, string romName)
+        {
+            try
+            {
+                lock (_lock) { if (!_hintLogged.Add(systemName + "|" + romName)) return; }
+                string key = Norm(romName); if (key.Length > 6) key = key.Substring(0, 6);
+                string systemDir = Path.Combine(_config.RomsPath, systemName);
+                var similar = HeroMediaDirs.SelectMany(d => ListDir(Path.Combine(systemDir, d)))
+                    .Where(f => Norm(Path.GetFileName(f)).Contains(key)).Take(6).Select(f => Path.GetFileName(f)).ToList();
+                _logger.LogWarning($"[Overrides] No own background found for '{romName}' ({systemName}). Similar files: {(similar.Count == 0 ? "none" : string.Join(", ", similar))}");
+            }
+            catch { /* diagnostic only */ }
+        }
+
+        private static string Norm(string s) => new string(s.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+
+        // EN: Directory listings cached by folder timestamp (browsing asks for every game).
+        private readonly Dictionary<string, (DateTime Stamp, string[] Files)> _dirCache
+            = new Dictionary<string, (DateTime, string[])>(StringComparer.OrdinalIgnoreCase);
+
+        private string[] ListDir(string dir)
+        {
+            try
+            {
+                if (!Directory.Exists(dir)) return Array.Empty<string>();
+                var stamp = Directory.GetLastWriteTimeUtc(dir);
+                lock (_lock)
+                {
+                    if (_dirCache.TryGetValue(dir, out var c) && c.Stamp == stamp) return c.Files;
+                    var files = Directory.GetFiles(dir);
+                    _dirCache[dir] = (stamp, files);
+                    return files;
+                }
+            }
+            catch { return Array.Empty<string>(); }
+        }
+
+        /// <summary>
+        /// EN: True when the user's own folders already hold what scraping would fetch: a background, and a logo unless
+        /// the logo was removed with Ctrl+D. Scrapers are skipped for such games (no "Scraping..." screen).
+        /// </summary>
+        public bool HasCompleteOwnMedia(string systemName, string romName)
+        {
+            if (string.IsNullOrEmpty(systemName) || string.IsNullOrEmpty(romName)) return false;
+            if (FindOwnHero(systemName, romName) == null) return false;
+            return IsNoLogo(systemName, romName) || FindOwnLogo(systemName, romName) != null;
         }
 
         private bool IsAccepted(string file)
