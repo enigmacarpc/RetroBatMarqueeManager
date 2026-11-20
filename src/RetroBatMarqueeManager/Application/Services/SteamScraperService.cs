@@ -117,14 +117,18 @@ namespace RetroBatMarqueeManager.Application.Services
 
             string romName = ResolveRomName(gamePath, gameName);
             bool anyExists = false;
+            bool heroMissing = false;
 
             foreach (var (wanted, asset) in new[] { (wantHero, Asset.Hero), (wantLogo, Asset.Logo) })
             {
                 if (!wanted) continue;
                 if (AssetExists(asset, systemName, romName)) { anyExists = true; continue; }
                 if (!IsFailed(asset, systemName, romName)) return false; // not settled yet
+                if (asset == Asset.Hero) heroMissing = true;
             }
-            return anyExists;
+            // EN: A logo alone must not stop the chain: when this source has no hero, lower-priority sources
+            //     (e.g. IGDB) still get their turn to provide the background.
+            return anyExists && !heroMissing;
         }
 
         // ------------------------------------------------------------------ config helpers
