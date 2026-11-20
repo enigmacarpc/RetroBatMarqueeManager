@@ -426,7 +426,9 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private static readonly string[] HeroMediaDirs = { "images", "media\\fanart", "media\\fanarts", "fanart", "downloaded_images" };
         private static readonly string[] LogoMediaDirs = { "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos", "downloaded_images" };
-        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero", "-image", "_image", "-thumb", "-mix" };
+        private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero" };
+        // EN: Last resort background when a game has no real hero: its in-game screenshot (NOT -image/-mix: those are box-art collages).
+        private static readonly string[] ScreenshotSuffixes = { "-screenshot", "_screenshot" };
         private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo", "-marquee" }; // EN: "-marquee" last: RetroBat saves the scraped logo/wheel under that name
 
         /// <summary>
@@ -453,14 +455,16 @@ namespace RetroBatMarqueeManager.Application.Services
         /// <summary>
         /// EN: The user's own hero/background for a game from roms\{system} (gamelist.xml fanart tag first, then usual folders), or null.
         /// </summary>
-        public string? FindOwnHero(string systemName, string romName)
+        public string? FindOwnHero(string systemName, string romName, bool strict = false)
         {
             try
             {
                 string systemDir = Path.Combine(_config.RomsPath, systemName);
                 if (!Directory.Exists(systemDir)) return null;
                 var entry = ReadGamelistEntry(systemDir, romName);
-                return FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
+                var hero = FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
+                if (hero != null || strict) return hero;
+                return FirstExisting(systemDir, entry.GetValueOrDefault("screenshot"), HeroMediaDirs, ScreenshotSuffixes, romName);
             }
             catch { return null; }
         }
@@ -507,7 +511,7 @@ namespace RetroBatMarqueeManager.Application.Services
                             if (string.IsNullOrWhiteSpace(path)) continue;
                             string stem = Path.GetFileNameWithoutExtension(path.Replace('/', '\\'));
                             var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                            foreach (var tag in new[] { "fanart", "wheel", "logo", "marquee" })
+                            foreach (var tag in new[] { "fanart", "wheel", "logo", "marquee", "screenshot" })
                             {
                                 var v = game.Element(tag)?.Value?.Trim();
                                 if (!string.IsNullOrEmpty(v)) tags[tag] = v;
@@ -611,7 +615,7 @@ namespace RetroBatMarqueeManager.Application.Services
         public bool HasCompleteOwnMedia(string systemName, string romName)
         {
             if (string.IsNullOrEmpty(systemName) || string.IsNullOrEmpty(romName)) return false;
-            if (FindOwnHero(systemName, romName) == null) return false;
+            if (FindOwnHero(systemName, romName, strict: true) == null) return false;
             return IsNoLogo(systemName, romName) || FindOwnLogo(systemName, romName) != null;
         }
 
