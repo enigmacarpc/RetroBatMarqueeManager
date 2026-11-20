@@ -442,7 +442,7 @@ namespace RetroBatMarqueeManager.Application.Services
             if (!Directory.Exists(systemDir)) return 0;
 
             var entry = ReadGamelistEntry(systemDir, romName);
-            string? hero = FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
+            string? hero = _config.UseRomsFolderBackgrounds ? FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName) : null;
             string? logo = FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo") ?? entry.GetValueOrDefault("marquee"), LogoMediaDirs, LogoSuffixes, romName);
 
             int count = 0;
@@ -460,6 +460,7 @@ namespace RetroBatMarqueeManager.Application.Services
             try
             {
                 string systemDir = Path.Combine(_config.RomsPath, systemName);
+                if (!_config.UseRomsFolderBackgrounds) return null; // EN: backgrounds come only from scrapers / Ctrl+I
                 if (!Directory.Exists(systemDir)) return null;
                 var entry = ReadGamelistEntry(systemDir, romName);
                 var hero = FirstExisting(systemDir, entry.GetValueOrDefault("fanart"), HeroMediaDirs, HeroSuffixes, romName);
