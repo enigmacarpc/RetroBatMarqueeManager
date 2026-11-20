@@ -70,6 +70,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
         private string? _currentDmdRibbonPath; // EN: Track last DMD ribbon for composition / FR: Suivre le dernier ruban DMD pour composition
 
         private readonly ScrapeOverrideService _scrapeOverrides;
+        private readonly SteamGridDbScraperService _steamGridDb;
 
         public MarqueeWorkflow(
             IConfigService config, 
@@ -83,12 +84,14 @@ namespace RetroBatMarqueeManager.Application.Workflows
             VideoOffsetStorageService videoOffsetStorage,
             IScraperManager scraperManager,
             ScrapeOverrideService scrapeOverrides,
+            SteamGridDbScraperService steamGridDb,
             IOverlayTemplateService templateService,
             ILogger<MarqueeWorkflow> logger,
             RetroAchievementsService? raService = null)
         {
             _config = config;
             _scrapeOverrides = scrapeOverrides;
+            _steamGridDb = steamGridDb;
             _imageService = imageService;
             _mpv = mpv;
             _marqueeFinder = marqueeFinder;
@@ -239,13 +242,41 @@ namespace RetroBatMarqueeManager.Application.Workflows
         // FR: Ctrl+Shift+R - rejeter le hero/logo scrapé du jeu sélectionné, puis rafraîchir.
         private async void HandleDiscardScrape()
         {
+            // EN: Ctrl+Shift+R - list the backgrounds SteamGridDB has for this game and let the user pick one.
             _logger.LogInformation("[Overrides] Ctrl+Shift+R received.");
             if (!TryGetCurrentGame(out var system, out var romName, "Ctrl+Shift+R")) return;
 
-            var (moved, adopted) = _scrapeOverrides.Reject(system, romName);
-            _logger.LogInformation($"[Overrides] Rejected scraped media for '{romName}' ({system}); {moved} file(s) moved to _cache\\discarded, {adopted} own image(s) picked up from the roms folder.");
-            await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
-            ShowOsd($"Rejected: {moved} file(s) discarded, {adopted} own image(s) found");
+            _pickerOpen = true;
+            try
+            {
+                string title = _currentGameTitle ?? _currentGameName ?? romName;
+                ShowOsd("SteamGridDB: loading backgrounds...");
+                var (items, error) = await _steamGridDb.ListHeroesAsync(system, title, romName);
+                if (items.Count == 0)
+                {
+                    ShowOsd(error ?? "SteamGridDB: no backgrounds found");
+                    return;
+                }
+
+                var list = items.Select(i => (i.ThumbUrl, $"{i.Width}x{i.Height}  score {i.Score}")).ToList();
+                int index = await Task.Run(() => HeroPickerDialog.Pick(title, list));
+                if (index < 0 || index >= items.Count) { _logger.LogInformation("[Overrides] Background choice cancelled."); return; }
+
+                string? tmp = await _steamGridDb.DownloadCandidateAsync(items[index]);
+                string? target = tmp == null ? null : _scrapeOverrides.ReplaceMedia(system, romName, tmp, isHero: true);
+                try { if (tmp != null) File.Delete(tmp); } catch { }
+
+                await HandleGameSelected(system, title, _currentGameRom ?? "");
+                ShowOsd(target != null ? "Background replaced" : "Could not download that background");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"[Overrides] Background picker failed: {ex.Message}");
+            }
+            finally
+            {
+                _pickerOpen = false;
+            }
         }
 
         // EN: Ctrl+D - remove the logo drawn on top of the background (toggle). FR: Ctrl+D - retirer le logo superposé (bascule).

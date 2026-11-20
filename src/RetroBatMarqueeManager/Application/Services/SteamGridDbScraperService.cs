@@ -277,6 +277,89 @@ namespace RetroBatMarqueeManager.Application.Services
             }
         }
 
+        // ------------------------------------------------------------------ manual background choice (Ctrl+Shift+R)
+
+        public class HeroCandidate
+        {
+            public string Url = "";
+            public string ThumbUrl = "";
+            public string Ext = "jpg";
+            public int Width;
+            public int Height;
+            public int Score;
+        }
+
+        /// <summary>EN: Lists the backgrounds (heroes) SteamGridDB has for the game so the user can choose one.</summary>
+        public async Task<(List<HeroCandidate> Items, string? Error)> ListHeroesAsync(string systemName, string gameName, string romName)
+        {
+            var result = new List<HeroCandidate>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_config.SteamGridDbApiKey))
+                    return (result, "SteamGridDB: no API key set in config.ini");
+
+                await _apiGate.WaitAsync();
+                try
+                {
+                    var ov = _overrides.Get(systemName, romName);
+                    int? gameId = ov?.NumericIdFor(Name) ?? await FindGameIdAsync(gameName, ov);
+                    if (gameId == null)
+                        return (result, "SteamGridDB: game not found (set SteamGridDB=<id> in scraper_overrides.ini)");
+
+                    string url = $"{ApiBase}/heroes/game/{gameId.Value}?nsfw=false&humor=false&epilepsy=false&types=static";
+                    using var doc = await GetJsonAsync(url, retryWithoutQueryOn400: true);
+                    if (doc == null || !doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+                        return (result, "SteamGridDB: no backgrounds returned");
+
+                    foreach (var item in data.EnumerateArray())
+                    {
+                        string? imageUrl = item.TryGetProperty("url", out var u) ? u.GetString() : null;
+                        if (string.IsNullOrWhiteSpace(imageUrl)) continue;
+                        string? ext = PickSaveExtension(item, imageUrl);
+                        if (ext == null) continue;
+                        string thumb = item.TryGetProperty("thumb", out var t) ? (t.GetString() ?? imageUrl) : imageUrl;
+                        result.Add(new HeroCandidate
+                        {
+                            Url = imageUrl,
+                            ThumbUrl = thumb,
+                            Ext = ext,
+                            Width = item.TryGetProperty("width", out var w) && w.TryGetInt32(out var wv) ? wv : 0,
+                            Height = item.TryGetProperty("height", out var h) && h.TryGetInt32(out var hv) ? hv : 0,
+                            Score = item.TryGetProperty("score", out var s) && s.TryGetInt32(out var sv) ? sv : 0
+                        });
+                        if (result.Count >= 30) break;
+                    }
+                }
+                finally { _apiGate.Release(); }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[SteamGridDB] Could not list backgrounds for '{gameName}': {ex.Message}");
+                return (result, "SteamGridDB: could not reach the service");
+            }
+            return (result, result.Count == 0 ? "SteamGridDB: no backgrounds found for this game" : null);
+        }
+
+        /// <summary>EN: Downloads the chosen background to a temporary file and returns its path (or null).</summary>
+        public async Task<string?> DownloadCandidateAsync(HeroCandidate c)
+        {
+            try
+            {
+                string tmp = Path.Combine(Path.GetTempPath(), $"rbmm_hero_{Guid.NewGuid():N}.{c.Ext}");
+                using var resp = await _http.GetAsync(c.Url);
+                if (!resp.IsSuccessStatusCode) return null;
+                var mediaType = resp.Content.Headers.ContentType?.MediaType;
+                if (mediaType == null || !mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return null;
+                await File.WriteAllBytesAsync(tmp, await resp.Content.ReadAsByteArrayAsync());
+                return tmp;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[SteamGridDB] Could not download the chosen background: {ex.Message}");
+                return null;
+            }
+        }
+
         // ------------------------------------------------------------------ SteamGridDB API
 
         private async Task<int?> FindGameIdAsync(string gameName, GameOverride? ov = null)

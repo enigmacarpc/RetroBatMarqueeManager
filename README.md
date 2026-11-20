@@ -104,9 +104,9 @@ Edit `config.ini` in the plugin folder to customize behavior.
         *   Games are matched by name. Games not found are remembered in `_cache\steamgriddb_failed.json` inside your medias folder; delete that file to retry them.
     *   **Fixing a bad or missing hero/logo by hand** (Steam, IGDB, SteamGridDB):
         *   **Use your own image:** save it as `<rom>-fanart.png` (hero) and `<rom>.png` (logo) in `<medias>\<system>\` (or in RetroBat's `roms\<system>\images\` as `<rom>-fanart.*`). Existing files are never overwritten, and the composed picture is rebuilt automatically when a source image changes.
-        *   **Throw away a bad result:** select the game and press **Ctrl+Shift+R**. Your own logo from `gamelist.xml` is also used automatically while browsing, instead of the system logo, whenever a game has a hero but no logo. Right after discarding, your own images are picked up from RetroBat's `roms\<system>` folder (copied, never moved): the hero from the game's `<fanart>` entry in that system's `gamelist.xml`, the logo from `<wheel>`/`<logo>`; if the entry is missing it tries `images`, `media\fanart`, `media\wheel`, `media\logos` with names like `<rom>-fanart`, `<rom>-wheel`, `<rom>-logo`. Its staged hero/logo are moved to `<medias>\_cache\discarded\<system>\` (recoverable) and the scrapers will not fetch that game again.
+        *   **Choose another background:** select the game and press **Ctrl+Shift+R**. A window opens with thumbnails of the backgrounds SteamGridDB has for that game (needs `SteamGridDbApiKey`); click one to use it, Esc to cancel. The previous background is moved to `_cache\discarded`. If the game is not found, set `SteamGridDB=<id>` for it in `scraper_overrides.ini`.
         *   **Fix a wrong match:** edit `scraper_overrides.ini` (created next to `config.ini`). Add a section `[system\rom_name]` with `Steam=<app id>`, `IGDB=<game id>`, `SteamGridDB=<game id>` and/or `Name=<search name>`. Saving the file gives that game one fresh attempt, even after Ctrl+Shift+R or a "not found". If a wrong image is already saved, press Ctrl+Shift+R first.
-        *   Typical replace flow: Ctrl+Shift+R on the game, add its correct ID to `scraper_overrides.ini`, save.
+        *   Typical replace flow: add the correct ID to `scraper_overrides.ini`, save, then press Ctrl+Shift+R on the game to pick a background.
         *   When SteamGridDB has staged the media for a game, lower-priority scrapers are skipped for that game.
 
 ## RetroAchievements Integration
@@ -235,7 +235,7 @@ For users of **Zaccaria Pinball**, it is possible to create a virtual secondary 
     *   **Ctrl+F**: change the background fit for the current game only. Each press cycles `width` -> `cover` -> `stretch` -> `contain` and back. The `BackgroundFit` setting stays the default for every other game; a game that is cycled back to the default simply uses it again. Choices are saved in `medias\_cache\bg_fit.json`.
     *   **Ctrl+D**: remove the logo drawn on top of the background (use it when the background already contains a logo). Press again to bring the logo back. The scrapers will not fetch a logo for that game while it is removed.
     *   **Ctrl+I**: opens a small question (Yes = logo, No = background) and then a file picker. A chosen logo is drawn on top of the current background; a chosen background is placed behind the current logo. The previous scraped file is moved to `_cache\discarded`. (While a video is being adjusted, Ctrl+I still sets the trim start.)
-    *   **Ctrl+Shift+R**: reject the scraped media of the current game (see above).
+    *   **Ctrl+Shift+R**: choose another SteamGridDB background for the current game (see above).
     *   A short on-screen message confirms each action.
 
 *   **Closing with RetroBat:** the app closes itself `RetroBatExitGraceSeconds` seconds (default 5, `0` = never) after both EmulationStation and the RetroBat launcher have closed. No separate script is needed.
