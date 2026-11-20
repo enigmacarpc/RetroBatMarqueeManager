@@ -93,7 +93,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     form.Controls.Add(logoBtn);
                     form.Controls.Add(bgBtn);
                     form.Controls.Add(cancelBtn);
-                    form.Shown += (_, _) => { form.Activate(); SetForegroundWindow(form.Handle); };
+                    form.Shown += (_, _) => { form.Activate(); WindowFocus.KeepOnTop(form); };
                     form.ShowDialog();
                 }
                 catch { /* picker is best effort */ }

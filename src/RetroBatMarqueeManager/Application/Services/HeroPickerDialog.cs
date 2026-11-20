@@ -84,7 +84,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     form.Shown += (_, _) =>
                     {
                         form.Activate();
-                        SetForegroundWindow(form.Handle);
+                        WindowFocus.KeepOnTop(form);
                         // EN: thumbnails load in the background so the window opens immediately.
                         for (int i = 0; i < items.Count; i++)
                         {
