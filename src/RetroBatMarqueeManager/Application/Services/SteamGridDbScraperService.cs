@@ -287,6 +287,7 @@ namespace RetroBatMarqueeManager.Application.Services
             public int Width;
             public int Height;
             public int Score;
+            public bool Animated; // EN: SteamGridDB lists it under types=animated (webm / animated webp)
         }
 
         /// <summary>EN: Lists the backgrounds (heroes) SteamGridDB has for the game so the user can choose one.</summary>
@@ -306,28 +307,33 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (gameId == null)
                         return (result, "SteamGridDB: game not found (set SteamGridDB=<id> in scraper_overrides.ini)");
 
-                    string url = $"{ApiBase}/heroes/game/{gameId.Value}?nsfw=false&humor=false&epilepsy=false&types=static";
-                    using var doc = await GetJsonAsync(url, retryWithoutQueryOn400: true);
-                    if (doc == null || !doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-                        return (result, "SteamGridDB: no backgrounds returned");
-
-                    foreach (var item in data.EnumerateArray())
+                    // EN: animated backgrounds first (marked in the picker), then the static ones.
+                    foreach (var animated in new[] { true, false })
                     {
-                        string? imageUrl = item.TryGetProperty("url", out var u) ? u.GetString() : null;
-                        if (string.IsNullOrWhiteSpace(imageUrl)) continue;
-                        string? ext = PickSaveExtension(item, imageUrl);
-                        if (ext == null) continue;
-                        string thumb = item.TryGetProperty("thumb", out var t) ? (t.GetString() ?? imageUrl) : imageUrl;
-                        result.Add(new HeroCandidate
+                        string url = $"{ApiBase}/heroes/game/{gameId.Value}?nsfw=false&humor=false&epilepsy=false&types={(animated ? "animated" : "static")}";
+                        using var doc = await GetJsonAsync(url, retryWithoutQueryOn400: true);
+                        if (doc == null || !doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array) continue;
+
+                        int taken = 0;
+                        foreach (var item in data.EnumerateArray())
                         {
-                            Url = imageUrl,
-                            ThumbUrl = thumb,
-                            Ext = ext,
-                            Width = item.TryGetProperty("width", out var w) && w.TryGetInt32(out var wv) ? wv : 0,
-                            Height = item.TryGetProperty("height", out var h) && h.TryGetInt32(out var hv) ? hv : 0,
-                            Score = item.TryGetProperty("score", out var s) && s.TryGetInt32(out var sv) ? sv : 0
-                        });
-                        if (result.Count >= 30) break;
+                            string? imageUrl = item.TryGetProperty("url", out var u) ? u.GetString() : null;
+                            if (string.IsNullOrWhiteSpace(imageUrl)) continue;
+                            string? ext = animated ? PickAnimatedExtension(item, imageUrl) : PickSaveExtension(item, imageUrl);
+                            if (ext == null) continue;
+                            string thumb = item.TryGetProperty("thumb", out var t) ? (t.GetString() ?? imageUrl) : imageUrl;
+                            result.Add(new HeroCandidate
+                            {
+                                Url = imageUrl,
+                                ThumbUrl = thumb,
+                                Ext = ext,
+                                Animated = animated,
+                                Width = item.TryGetProperty("width", out var w) && w.TryGetInt32(out var wv) ? wv : 0,
+                                Height = item.TryGetProperty("height", out var h) && h.TryGetInt32(out var hv) ? hv : 0,
+                                Score = item.TryGetProperty("score", out var sc) && sc.TryGetInt32(out var sv) ? sv : 0
+                            });
+                            if (++taken >= (animated ? 20 : 30)) break;
+                        }
                     }
                 }
                 finally { _apiGate.Release(); }
@@ -349,7 +355,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 using var resp = await _http.GetAsync(c.Url);
                 if (!resp.IsSuccessStatusCode) return null;
                 var mediaType = resp.Content.Headers.ContentType?.MediaType;
-                if (mediaType == null || !mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return null;
+                if (mediaType == null || !(mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) || (c.Animated && mediaType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)))) return null;
                 await File.WriteAllBytesAsync(tmp, await resp.Content.ReadAsByteArrayAsync());
                 return tmp;
             }
@@ -443,6 +449,28 @@ namespace RetroBatMarqueeManager.Application.Services
 
             string targetBase = StagingBase(asset, systemName, romName);
             return await DownloadImageAsync(best.url, targetBase, best.ext);
+        }
+
+        // EN: Animated backgrounds come as webm (video) or animated webp / apng / gif.
+        private static string? PickAnimatedExtension(JsonElement item, string imageUrl)
+        {
+            string? mime = item.TryGetProperty("mime", out var m) ? m.GetString() : null;
+            string ext = (mime?.ToLowerInvariant()) switch
+            {
+                "video/webm" => "webm",
+                "video/mp4" => "mp4",
+                "image/webp" => "webp",
+                "image/apng" => "png",
+                "image/gif" => "gif",
+                "image/png" => "png",
+                _ => ""
+            };
+            if (ext.Length == 0)
+            {
+                try { ext = Path.GetExtension(new Uri(imageUrl).AbsolutePath).TrimStart('.').ToLowerInvariant(); }
+                catch { return null; }
+            }
+            return ext is "webm" or "mp4" or "webp" or "png" or "gif" ? ext : null;
         }
 
         // EN: Returns the file extension to save with, or null if the app wouldn't find/read that format.

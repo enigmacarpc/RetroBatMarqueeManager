@@ -319,6 +319,29 @@ namespace RetroBatMarqueeManager.Application.Services
 
         public string GetFfmpegPath() => FindFfmpeg();
 
+        /// <summary>EN: Saves the first frame of an animated image / video as a PNG next to it and returns that path (or null).</summary>
+        public string? ExtractFirstFrame(string animatedPath)
+        {
+            try
+            {
+                string png = Path.Combine(Path.GetTempPath(), $"rbmm_frame_{Guid.NewGuid():N}.png");
+                var psi = new ProcessStartInfo { FileName = FindFfmpeg(), UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true, CreateNoWindow = true };
+                foreach (var a in new[] { "-y", "-loglevel", "error", "-i", animatedPath, "-frames:v", "1", png }) psi.ArgumentList.Add(a);
+                using var p = Process.Start(psi);
+                if (p == null) return null;
+                p.ErrorDataReceived += (s, e) => { };
+                p.BeginErrorReadLine();
+                p.StandardOutput.ReadToEnd();
+                if (!p.WaitForExit(20000)) { try { p.Kill(); } catch { } return null; }
+                return p.ExitCode == 0 && File.Exists(png) ? png : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Frame] {ex.Message}");
+                return null;
+            }
+        }
+
         private string? _ffmpegPath = null;
         private string FindFfmpeg()
         {

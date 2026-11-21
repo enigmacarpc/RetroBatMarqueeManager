@@ -21,7 +21,7 @@ namespace RetroBatMarqueeManager.Application.Services
         private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
 
         /// <summary>Returns the index of the chosen item, or -1 when cancelled.</summary>
-        public static int Pick(string gameName, IReadOnlyList<(string ThumbUrl, string Label)> items)
+        public static int Pick(string gameName, IReadOnlyList<(string ThumbUrl, string Label, bool Animated)> items)
         {
             int chosen = -1;
             IntPtr previous = GetForegroundWindow();
@@ -42,13 +42,18 @@ namespace RetroBatMarqueeManager.Application.Services
                         KeyPreview = true
                     };
 
+                    int animatedCount = 0;
+                    foreach (var it in items) if (it.Animated) animatedCount++;
                     var header = new Label
                     {
-                        Text = "SteamGridDB backgrounds - click one to use it, Esc to cancel",
-                        Dock = DockStyle.Top,
-                        Height = 36,
+                        Text = $"SteamGridDB backgrounds ({animatedCount} animated, {items.Count - animatedCount} still) - click one to use it, Esc to cancel",
+                        Dock = DockStyle.Fill,
                         TextAlign = ContentAlignment.MiddleCenter
                     };
+                    var animOnly = new CheckBox { Text = "Animated only", Dock = DockStyle.Right, Width = 130, ForeColor = Color.White, Enabled = animatedCount > 0 };
+                    var top = new Panel { Dock = DockStyle.Top, Height = 36 };
+                    top.Controls.Add(header);
+                    top.Controls.Add(animOnly);
                     var cancel = new Button { Text = "Cancel", Dock = DockStyle.Bottom, Height = 36, FlatStyle = FlatStyle.System, ForeColor = Color.Black };
                     var panel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = true, Padding = new Padding(8) };
 
@@ -73,12 +78,29 @@ namespace RetroBatMarqueeManager.Application.Services
                         box.Click += (_, _) => { chosen = index; form.Close(); };
                         box.MouseEnter += (_, _) => box.BackColor = Color.FromArgb(0, 120, 215);
                         box.MouseLeave += (_, _) => box.BackColor = Color.FromArgb(55, 55, 55);
+                        if (items[i].Animated)
+                        {
+                            // EN: orange "ANIMATED" badge; when the preview cannot be shown (webm) the badge explains it.
+                            box.Paint += (_, e) =>
+                            {
+                                using var f = new Font("Segoe UI", 9f, FontStyle.Bold);
+                                if (box.Image == null) TextRenderer.DrawText(e.Graphics, "Animated (no preview)", f, box.ClientRectangle, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                                var r = new Rectangle(4, 4, 84, 20);
+                                using var br = new SolidBrush(Color.FromArgb(230, 230, 120, 0));
+                                e.Graphics.FillRectangle(br, r);
+                                TextRenderer.DrawText(e.Graphics, "ANIMATED", f, r, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                            };
+                        }
                         boxes.Add(box);
                         panel.Controls.Add(box);
                     }
 
+                    animOnly.CheckedChanged += (_, _) =>
+                    {
+                        for (int i = 0; i < boxes.Count; i++) boxes[i].Visible = !animOnly.Checked || items[i].Animated;
+                    };
                     form.Controls.Add(panel);
-                    form.Controls.Add(header);
+                    form.Controls.Add(top);
                     form.Controls.Add(cancel);
 
                     form.Shown += (_, _) =>
