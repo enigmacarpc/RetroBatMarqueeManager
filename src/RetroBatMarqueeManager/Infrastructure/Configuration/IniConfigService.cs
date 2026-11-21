@@ -125,6 +125,9 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         
         // Composition Settings
         public string ComposeMedia => GetValue("ComposeMedia", "fanart"); // fanart or image
+        public bool LogoAutoFit => GetValue("LogoAutoFit", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
+        public int LogoMaxWidthPercent => int.TryParse(GetValue("LogoMaxWidthPercent", "55"), out var lw) ? Math.Clamp(lw, 10, 100) : 55;
+        public int LogoMaxHeightPercent => int.TryParse(GetValue("LogoMaxHeightPercent", "75"), out var lh) ? Math.Clamp(lh, 10, 100) : 75;
         public bool UseRomsFolderBackgrounds => GetValue("UseRomsFolderBackgrounds", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
         public string BackgroundFit => GetValue("BackgroundFit", "width");
         public string MarqueeLayout => GetValue("MarqueeLayout", "gradient-standard"); // standard, gradient-left, gradient-right, gradient-standard
@@ -626,6 +629,9 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "MarqueeLayout", "gradient-standard" },
                 { "BackgroundFit", "width" },
                 { "UseRomsFolderBackgrounds", "false" },
+                { "LogoAutoFit", "true" },
+                { "LogoMaxWidthPercent", "55" },
+                { "LogoMaxHeightPercent", "75" },
                 { "MarqueeAutoConvert", "true" },
                 { "MarqueeVideoGeneration", "false" },
                 { "MarqueeAutoScraping", "false" },
@@ -748,6 +754,9 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["MarqueeLayout"] = "gradient-standard";
                 _settings["BackgroundFit"] = "width";
                 _settings["UseRomsFolderBackgrounds"] = "false";
+                _settings["LogoAutoFit"] = "true";
+                _settings["LogoMaxWidthPercent"] = "55";
+                _settings["LogoMaxHeightPercent"] = "75";
                 _settings["MarqueeAutoConvert"] = "true";
                 _settings["MarqueeVideoGeneration"] = "false"; // Added
                 _settings["GenerateMarqueeVideoFolder"] = "generated_videos"; // Added
@@ -863,6 +872,10 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("; How a background is fitted to the marquee: width = fill the width, crop top/bottom (default); cover = fill both directions, crop the overflow; stretch = force exactly MarqueeWidth x MarqueeHeight (distorts); contain = whole image visible, empty bars filled with the background color");
                 WriteKey(sb, "BackgroundFit", "width");
                 WriteKey(sb, "UseRomsFolderBackgrounds", "false");
+                sb.AppendLine("; Logos that have no saved size/position are trimmed of empty margins, fitted inside this share of the marquee and centered. Logos you adjusted by hand keep their saved size. Set LogoAutoFit=false for the old behaviour.");
+                WriteKey(sb, "LogoAutoFit", "true");
+                WriteKey(sb, "LogoMaxWidthPercent", "55");
+                WriteKey(sb, "LogoMaxHeightPercent", "75");
                 WriteKey(sb, "MarqueeAutoConvert", "true");
                 WriteKey(sb, "MarqueeVideoGeneration", "false"); // Added
 
@@ -1047,7 +1060,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "DmdEnabled", "DmdModel", "DmdExePath", "DmdMediaPath", "SystemCustomDMDPath", "DmdGameStartMediaPath", "DmdCompose", "DmdFormat", "DmdArguments", "DmdWidth", "DmdHeight", "DmdDotSize",
                     "ScreenNumber",
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
-                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "UseRomsFolderBackgrounds", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
+                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "UseRomsFolderBackgrounds", "LogoAutoFit", "LogoMaxWidthPercent", "LogoMaxHeightPercent", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
                     "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",

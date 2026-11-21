@@ -2029,6 +2029,10 @@ namespace RetroBatMarqueeManager.Application.Services
         public string GenerateComposition(string fanartPath, string logoPath, string subFolder, int offsetX = 0, int offsetY = 0, int logoOffsetX = 0, int logoOffsetY = 0, double fanartScale = 1.0, double logoScale = 1.0, bool isPreview = false, string? fit = null)
         {
             string effFit = (fit ?? _config.BackgroundFit ?? "width").Trim().ToLowerInvariant();
+            // EN: logos with no saved size/position are auto-fitted (trimmed, limited to a share of the marquee, centered).
+            bool logoAutoFit = _config.LogoAutoFit && subFolder != "video_preview"
+                               && Math.Abs(logoScale - 1.0) < 0.001 && logoOffsetX == 0 && logoOffsetY == 0;
+            string sigFit = effFit + "|laf" + (logoAutoFit ? $"{_config.LogoMaxWidthPercent}x{_config.LogoMaxHeightPercent}" : "0");
             if (string.IsNullOrEmpty(fanartPath) || !File.Exists(fanartPath)) return logoPath;
             if (string.IsNullOrEmpty(logoPath) || !File.Exists(logoPath)) return fanartPath; 
             
@@ -2068,7 +2072,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     bool offsetsMatch = ValidateOffsetMetadata(targetPath, offsetX, offsetY, fanartScale, logoOffsetX, logoOffsetY, logoScale);
                     // EN: Also require the source images to be unchanged (user swapped/replaced a hero or logo).
                     // Cache files made before this check have no sidecar and are rebuilt once.
-                    if (offsetsMatch && !SourceSignatureMatches(targetPath, fanartPath, logoPath, effFit))
+                    if (offsetsMatch && !SourceSignatureMatches(targetPath, fanartPath, logoPath, sigFit))
                     {
                         _logger.LogInformation($"[CACHE INVALID] Source image changed: {simpleName}");
                         offsetsMatch = false;
@@ -2211,7 +2215,18 @@ namespace RetroBatMarqueeManager.Application.Services
                 args.Add("(");
                 args.Add("-background"); args.Add("none");
                 args.Add(ShrinkOversizedLogo(logoPath));
-                args.Add("-resize"); args.Add($"{logoW}x{scaledLogoH}"); // Fit within bounds (allow both shrink and enlarge)
+                if (logoAutoFit)
+                {
+                    // EN: drop transparent margins so the artwork itself is what gets sized and centered, then fit it inside the allowed box.
+                    args.Add("-trim"); args.Add("+repage");
+                    int boxW = Math.Max(1, w * _config.LogoMaxWidthPercent / 100);
+                    int boxH = Math.Max(1, h * _config.LogoMaxHeightPercent / 100);
+                    args.Add("-resize"); args.Add($"{boxW}x{boxH}");
+                }
+                else
+                {
+                    args.Add("-resize"); args.Add($"{logoW}x{scaledLogoH}"); // Fit within bounds (allow both shrink and enlarge)
+                }
                 args.Add(")");
 
                 // Position Logo based on Layout
@@ -2313,7 +2328,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     if (!isPreview)
                     {
                         SaveOffsetMetadata(targetPath, offsetX, offsetY, fanartScale, logoOffsetX, logoOffsetY, logoScale);
-                        WriteSourceSignature(targetPath, fanartPath, logoPath, effFit);
+                        WriteSourceSignature(targetPath, fanartPath, logoPath, sigFit);
                     }
                     
                     return targetPath;
