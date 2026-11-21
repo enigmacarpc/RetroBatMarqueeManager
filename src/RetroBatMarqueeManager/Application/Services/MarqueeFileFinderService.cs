@@ -25,6 +25,8 @@ namespace RetroBatMarqueeManager.Application.Services
         private string _lastRom = "";
 
         private readonly ScrapeOverrideService _ownImages;
+        private readonly BackgroundEffectsService _effects;
+        private static readonly AsyncLocal<bool> _plainBackground = new AsyncLocal<bool>();
 
         public MarqueeFileFinderService(
             IConfigService config,
@@ -33,9 +35,11 @@ namespace RetroBatMarqueeManager.Application.Services
             OffsetStorageService offsetService,
             IScraperManager scraperManager,
             ScrapeOverrideService ownImages,
+            BackgroundEffectsService effects,
             ILogger<MarqueeFileFinderService> logger)
         {
             _ownImages = ownImages;
+            _effects = effects;
             _config = config;
             _esSettings = esSettings;
             _imageService = imageService;
@@ -243,7 +247,33 @@ namespace RetroBatMarqueeManager.Application.Services
         /// Find game marquee with fallback chain and scraping
         /// FR: Trouver le marquee d'un jeu avec chaîne de fallback et scraping
         /// </summary>
+        // EN: Wraps the normal lookup: when animated effects are on for this game, the composed picture is swapped for its effect video (rendered once, then cached).
         private async Task<string?> FindGameMarqueeAsync(string system, string gameName, string gameTitle, string romPath, bool isPreview = false, bool allowVideoGeneration = true, bool isGameStart = false)
+        {
+            var result = await FindGameMarqueeCoreAsync(system, gameName, gameTitle, romPath, isPreview, allowVideoGeneration, isGameStart);
+            try
+            {
+                if (isPreview || _plainBackground.Value || string.IsNullOrEmpty(result) || string.IsNullOrEmpty(romPath)) return result;
+                if (!result.EndsWith("_composed.png", StringComparison.OrdinalIgnoreCase) || result.EndsWith("-nologo_composed.png", StringComparison.OrdinalIgnoreCase) || !File.Exists(result)) return result;
+                string rom = Path.GetFileNameWithoutExtension(romPath);
+                string effSystem = ExtractSystemFromRomPath(romPath) ?? system;
+                if (string.IsNullOrEmpty(rom) || !_ownImages.EffectsEnabled(effSystem, rom)) return result;
+                var fx = await _effects.GetOrQueueAsync(result, async () =>
+                {
+                    _plainBackground.Value = true; // EN: only inside this flow: compose the background without any logo
+                    try { return await FindGameMarqueeCoreAsync(system, gameName, gameTitle, romPath, false, false, false); }
+                    finally { _plainBackground.Value = false; }
+                });
+                return fx ?? result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Effects] {ex.Message}");
+                return result;
+            }
+        }
+
+        private async Task<string?> FindGameMarqueeCoreAsync(string system, string gameName, string gameTitle, string romPath, bool isPreview = false, bool allowVideoGeneration = true, bool isGameStart = false)
         {
             _logger.LogInformation($"FindGameMarqueeAsync: system={system}, game={gameName}, rom={romPath} [Preview:{isPreview}]");
             
@@ -528,7 +558,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 {
                     string? bgFit = _ownImages.GetFit(effSystem, romFileName);
                     // EN: Ctrl+D: the user removed the logo drawn on top (the background already contains one). Show the background alone.
-                    if (_ownImages.IsNoLogo(effSystem, romFileName))
+                    if (_plainBackground.Value || _ownImages.IsNoLogo(effSystem, romFileName))
                     {
                         _logger.LogInformation($"Marquee: background only (logo removed with Ctrl+D) for {romFileName}");
                         // EN: Compose with a transparent logo so the background is sized/cropped exactly like a normal marquee

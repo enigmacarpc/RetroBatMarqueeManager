@@ -128,6 +128,10 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         public string BackgroundAnchor => GetValue("BackgroundAnchor", "auto");
         public bool LogoAutoFit => GetValue("LogoAutoFit", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
         public int LogoMaxWidthPercent => int.TryParse(GetValue("LogoMaxWidthPercent", "45"), out var lw) ? Math.Clamp(lw, 10, 100) : 45;
+        public bool BackgroundEffects => GetValue("BackgroundEffects", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
+        public bool EffectStars => GetValue("EffectStars", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
+        public bool EffectMoon => GetValue("EffectMoon", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
+        public bool EffectFire => GetValue("EffectFire", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
         public int LogoAreaPercent => int.TryParse(GetValue("LogoAreaPercent", "17"), out var la) ? Math.Clamp(la, 3, 80) : 17;
         public int LogoMaxHeightPercent => int.TryParse(GetValue("LogoMaxHeightPercent", "72"), out var lh) ? Math.Clamp(lh, 10, 100) : 72;
         public bool UseRomsFolderBackgrounds => GetValue("UseRomsFolderBackgrounds", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -636,6 +640,10 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "LogoMaxWidthPercent", "45" },
                 { "LogoMaxHeightPercent", "72" },
                 { "LogoAreaPercent", "17" },
+                { "BackgroundEffects", "false" },
+                { "EffectStars", "true" },
+                { "EffectMoon", "true" },
+                { "EffectFire", "true" },
                 { "MarqueeAutoConvert", "true" },
                 { "MarqueeVideoGeneration", "false" },
                 { "MarqueeAutoScraping", "false" },
@@ -763,6 +771,10 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["LogoMaxWidthPercent"] = "55";
                 _settings["LogoMaxHeightPercent"] = "75";
                 _settings["LogoAreaPercent"] = "17";
+                _settings["BackgroundEffects"] = "false";
+                _settings["EffectStars"] = "true";
+                _settings["EffectMoon"] = "true";
+                _settings["EffectFire"] = "true";
                 _settings["MarqueeAutoConvert"] = "true";
                 _settings["MarqueeVideoGeneration"] = "false"; // Added
                 _settings["GenerateMarqueeVideoFolder"] = "generated_videos"; // Added
@@ -885,6 +897,12 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 WriteKey(sb, "LogoMaxWidthPercent", "45");
                 WriteKey(sb, "LogoMaxHeightPercent", "72");
                 WriteKey(sb, "LogoAreaPercent", "17");
+                sb.AppendLine("; Animated effects on top of the background (twinkling stars, glowing moon / big lights, flickering fire and warm lights). BackgroundEffects is the default for all games;");
+                sb.AppendLine("; press Ctrl+E on a selected game to switch it on or off for that game only. The effect is rendered once (a few seconds) into a short looping video and then reused.");
+                WriteKey(sb, "BackgroundEffects", "false");
+                WriteKey(sb, "EffectStars", "true");
+                WriteKey(sb, "EffectMoon", "true");
+                WriteKey(sb, "EffectFire", "true");
                 WriteKey(sb, "MarqueeAutoConvert", "true");
                 WriteKey(sb, "MarqueeVideoGeneration", "false"); // Added
 
@@ -1069,7 +1087,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "DmdEnabled", "DmdModel", "DmdExePath", "DmdMediaPath", "SystemCustomDMDPath", "DmdGameStartMediaPath", "DmdCompose", "DmdFormat", "DmdArguments", "DmdWidth", "DmdHeight", "DmdDotSize",
                     "ScreenNumber",
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
-                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "UseRomsFolderBackgrounds", "BackgroundAnchor", "LogoAutoFit", "LogoMaxWidthPercent", "LogoMaxHeightPercent", "LogoAreaPercent", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
+                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "UseRomsFolderBackgrounds", "BackgroundAnchor", "LogoAutoFit", "LogoMaxWidthPercent", "LogoMaxHeightPercent", "LogoAreaPercent", "BackgroundEffects", "EffectStars", "EffectMoon", "EffectFire", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
                     "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",

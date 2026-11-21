@@ -317,6 +317,8 @@ namespace RetroBatMarqueeManager.Application.Services
             return ConvertDmdImage(sourcePath, targetPath, isHardcore) ? targetPath : sourcePath;
         }
 
+        public string GetFfmpegPath() => FindFfmpeg();
+
         private string? _ffmpegPath = null;
         private string FindFfmpeg()
         {

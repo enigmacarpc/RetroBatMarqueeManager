@@ -148,6 +148,7 @@ public class Program
                     services.AddSingleton<IDmdService, DmdService>();
                     services.AddSingleton<IMarqueeFileFinder, MarqueeFileFinderService>();
                     services.AddSingleton<ImageConversionService>();
+                    services.AddSingleton<BackgroundEffectsService>();
                     services.AddSingleton<MarqueeWorkflow>();
                     services.AddSingleton<OffsetStorageService>(); // Persistence (Images composées / Composed Images)
                     services.AddSingleton<VideoOffsetStorageService>(); // Persistence (Vidéos / Videos)

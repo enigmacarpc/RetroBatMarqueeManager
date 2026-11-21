@@ -374,6 +374,52 @@ namespace RetroBatMarqueeManager.Application.Services
 
         // ------------------------------------------------------------------ per-game background fit (Ctrl+F)
 
+        // EN: Ctrl+E - per-game switch for the animated effects (overrides the BackgroundEffects default).
+        private readonly Dictionary<string, bool> _effects = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private string EffectsPath => Path.Combine(_config.MarqueeImagePath, "_cache", "bg_effects.json");
+        private bool _effectsLoaded;
+
+        private void LoadEffects()
+        {
+            if (_effectsLoaded) return;
+            _effectsLoaded = true;
+            try
+            {
+                if (!File.Exists(EffectsPath)) return;
+                var d = JsonSerializer.Deserialize<Dictionary<string, bool>>(File.ReadAllText(EffectsPath));
+                if (d != null) foreach (var kv in d) _effects[kv.Key] = kv.Value;
+            }
+            catch (Exception ex) { _logger.LogWarning($"[Overrides] Failed to load effects list: {ex.Message}"); }
+        }
+
+        public bool EffectsEnabled(string systemName, string romName)
+        {
+            lock (_lock)
+            {
+                LoadEffects();
+                return _effects.TryGetValue(Key(systemName, romName), out var on) ? on : _config.BackgroundEffects;
+            }
+        }
+
+        /// <summary>EN: Flips the effects for this game and returns the new state.</summary>
+        public bool ToggleEffects(string systemName, string romName)
+        {
+            lock (_lock)
+            {
+                LoadEffects();
+                bool now = _effects.TryGetValue(Key(systemName, romName), out var on) ? on : _config.BackgroundEffects;
+                bool next = !now;
+                if (next == _config.BackgroundEffects) _effects.Remove(Key(systemName, romName)); else _effects[Key(systemName, romName)] = next;
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(EffectsPath)!);
+                    File.WriteAllText(EffectsPath, JsonSerializer.Serialize(_effects));
+                }
+                catch (Exception ex) { _logger.LogWarning($"[Overrides] Failed to save effects list: {ex.Message}"); }
+                return next;
+            }
+        }
+
         private readonly Dictionary<string, string> _fit = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly string _fitPath;
         private static readonly string[] FitModes = { "width", "cover", "stretch", "contain" };

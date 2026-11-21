@@ -17,6 +17,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
         public event Action? OnTrimEnd;
         public event Action? OnDiscardScrape;
         public event Action? OnDeleteLogo;
+        public event Action? OnToggleEffects;
+        private bool _wasEDown = false;
         public event Action? OnCycleFit;
         private bool _wasFDown = false;
         private bool _wasDDown = false;
@@ -89,6 +91,15 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
                 _lastInputTime = DateTime.Now;
             }
             _wasFDown = isFDown;
+
+            // EN: Ctrl+E = animated effects (stars / moon / fire) on or off for the current game (one-shot).
+            bool isEDown = (GetAsyncKeyState(0x45) & 0x8000) != 0; // VK_E
+            if (ctrlPressed && !altPressed && !shiftPressed && isEDown && !_wasEDown)
+            {
+                OnToggleEffects?.Invoke();
+                _lastInputTime = DateTime.Now;
+            }
+            _wasEDown = isEDown;
             
             // EN: Check Ctrl+V for video adjustment mode (before other checks)
             // FR: Vérifier Ctrl+V pour mode ajustement vidéo (avant autres vérifications)

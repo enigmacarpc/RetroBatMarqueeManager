@@ -143,6 +143,7 @@ namespace RetroBatMarqueeManager.Application.Workflows
             };
             _inputService.OnDeleteLogo += HandleDeleteLogo;
             _inputService.OnCycleFit += HandleCycleFit;
+            _inputService.OnToggleEffects += HandleToggleEffects;
             _inputService.OnTrimEnd += () => HandleTrimCommand(false);
             _inputService.OnDiscardScrape += HandleDiscardScrape;
             
@@ -301,6 +302,24 @@ namespace RetroBatMarqueeManager.Application.Workflows
             _logger.LogInformation($"[Overrides] Background fit for '{romName}' ({system}): {mode}{(isDefault ? " (default)" : "")}");
             await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
             ShowOsd($"Background fit: {mode}{(isDefault ? " (default)" : "")}");
+        }
+
+        // EN: Ctrl+E - animated effects (stars, moon, fire) on or off for the selected game.
+        private async void HandleToggleEffects()
+        {
+            _logger.LogInformation("[Overrides] Ctrl+E received.");
+            if (!TryGetCurrentGame(out var system, out var romName, "Ctrl+E")) return;
+
+            bool on = _scrapeOverrides.ToggleEffects(system, romName);
+            _logger.LogInformation($"[Overrides] Effects for '{romName}' ({system}): {(on ? "ON" : "OFF")}");
+            ShowOsd(on ? "Effects: ON (rendering...)" : "Effects: OFF");
+            BackgroundEffectsService.WaitForRender.Value = on; // EN: wait for the first render so it shows right away
+            try
+            {
+                await HandleGameSelected(system, _currentGameTitle ?? _currentGameName ?? romName, _currentGameRom ?? "");
+            }
+            finally { BackgroundEffectsService.WaitForRender.Value = false; }
+            if (on) ShowOsd("Effects: ON");
         }
 
         // EN: Ctrl+I - choose an image in Explorer: a logo to draw on top of the background, or a background behind the logo.
