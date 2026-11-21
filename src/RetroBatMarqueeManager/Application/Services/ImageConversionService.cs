@@ -319,6 +319,98 @@ namespace RetroBatMarqueeManager.Application.Services
 
         public string GetFfmpegPath() => FindFfmpeg();
 
+        private string? _h264Args;
+        private IEnumerable<string> H264Args()
+        {
+            string hw = _config.FfmpegHwEncoding;
+            if (!string.IsNullOrWhiteSpace(hw)) return new[] { "-c:v", hw };
+            if (_h264Args == null)
+            {
+                string list = "";
+                try
+                {
+                    var psi = new ProcessStartInfo { FileName = FindFfmpeg(), UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+                    psi.ArgumentList.Add("-hide_banner"); psi.ArgumentList.Add("-encoders");
+                    using var p = Process.Start(psi);
+                    if (p != null) { list = p.StandardOutput.ReadToEnd(); p.WaitForExit(10000); }
+                }
+                catch { }
+                _h264Args = list.Contains("libx264") ? "x264" : list.Contains("libopenh264") ? "openh264" : "mpeg4";
+            }
+            return _h264Args switch
+            {
+                "x264" => new[] { "-c:v", "libx264", "-crf", "20", "-preset", "veryfast" },
+                "openh264" => new[] { "-c:v", "libopenh264", "-b:v", "8M" },
+                _ => new[] { "-c:v", "mpeg4", "-q:v", "3" }
+            };
+        }
+
+        /// <summary>
+        /// EN: Turns an animated background (webm / animated webp / gif) into a marquee-sized mp4 with the game's logo centered on top
+        /// (same equal-area sizing as the still marquees). Returns true when targetMp4 was written.
+        /// </summary>
+        public bool BuildAnimatedMarquee(string animatedPath, string? logoPath, string targetMp4)
+        {
+            string? trimmedLogo = null;
+            try
+            {
+                int w = _config.MarqueeWidth, h = _config.MarqueeHeight;
+                Directory.CreateDirectory(Path.GetDirectoryName(targetMp4)!);
+
+                if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
+                {
+                    trimmedLogo = Path.Combine(Path.GetTempPath(), $"rbmm_logo_{Guid.NewGuid():N}.png");
+                    var im = new ProcessStartInfo { FileName = _config.IMPath, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(_config.IMPath) };
+                    foreach (var a in new[] { ShrinkOversizedLogo(logoPath), "-background", "none", "-trim", "+repage", trimmedLogo }) im.ArgumentList.Add(a);
+                    using (var ip = Process.Start(im)) { if (ip != null) { ip.ErrorDataReceived += (s, e) => { }; ip.BeginErrorReadLine(); ip.StandardOutput.ReadToEnd(); ip.WaitForExit(20000); } }
+                    if (!File.Exists(trimmedLogo)) trimmedLogo = null;
+                }
+
+                string tmp = targetMp4 + ".tmp.mp4";
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+
+                var psi = new ProcessStartInfo { FileName = FindFfmpeg(), UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+                var args = new List<string> { "-y", "-loglevel", "error", "-i", animatedPath };
+                string bg = $"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}:(iw-ow)/2:(ih-oh)*0.4,setsar=1,format=yuv420p";
+                if (trimmedLogo != null)
+                {
+                    args.Add("-i"); args.Add(trimmedLogo);
+                    double area = (double)w * h * _config.LogoAreaPercent / 100.0;
+                    string lw = $"min(min(sqrt({area.ToString(System.Globalization.CultureInfo.InvariantCulture)}*iw/ih),{(w * _config.LogoMaxWidthPercent / 100.0).ToString(System.Globalization.CultureInfo.InvariantCulture)}),{(h * _config.LogoMaxHeightPercent / 100.0).ToString(System.Globalization.CultureInfo.InvariantCulture)}*iw/ih)";
+                    args.Add("-filter_complex");
+                    args.Add($"{bg}[bg];[1:v]format=rgba,scale=w='{lw}':h=-2[lg];[bg][lg]overlay=(W-w)/2:(H-h)/2,format=yuv420p");
+                }
+                else
+                {
+                    args.Add("-vf"); args.Add(bg);
+                }
+                args.Add("-an");
+                args.AddRange(H264Args());
+                args.AddRange(new[] { "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-f", "mp4", tmp });
+                foreach (var a in args) psi.ArgumentList.Add(a);
+
+                using var p = Process.Start(psi);
+                if (p == null) return false;
+                p.ErrorDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) _logger.LogWarning($"[AnimMarquee ffmpeg] {e.Data}"); };
+                p.BeginErrorReadLine();
+                p.StandardOutput.ReadToEnd();
+                if (!p.WaitForExit(120000)) { try { p.Kill(); } catch { } return false; }
+                if (p.ExitCode != 0 || !File.Exists(tmp) || new FileInfo(tmp).Length < 1024) return false;
+                File.Copy(tmp, targetMp4, true);
+                try { File.Delete(tmp); } catch { }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[AnimMarquee] {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                try { if (trimmedLogo != null && File.Exists(trimmedLogo)) File.Delete(trimmedLogo); } catch { }
+            }
+        }
+
         /// <summary>EN: Saves the first frame of an animated image / video as a PNG next to it and returns that path (or null).</summary>
         public string? ExtractFirstFrame(string animatedPath)
         {

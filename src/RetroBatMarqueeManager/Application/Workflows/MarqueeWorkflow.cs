@@ -265,25 +265,53 @@ namespace RetroBatMarqueeManager.Application.Workflows
 
                 string? tmp = await _steamGridDb.DownloadCandidateAsync(items[index]);
                 bool animatedPick = items[index].Animated;
-                string? stillFrame = null;
+                string? target = null;
+                string osd = "Could not download that background";
                 if (tmp != null && animatedPick)
                 {
-                    // EN: the marquee still uses pictures: take the first frame as the background and keep the animated file for later use.
-                    try
+                    // EN: an animated pick becomes a ready-made marquee video in the custom games folder (it overrides every other background / logo).
+                    string logo = _scrapeOverrides.FindOwnLogo(system, romName) ?? "";
+                    if (string.IsNullOrEmpty(logo))
                     {
-                        string keepDir = Path.Combine(Path.GetDirectoryName(_config.CachePath) ?? _config.CachePath, "animated_backgrounds", system);
-                        Directory.CreateDirectory(keepDir);
-                        File.Copy(tmp, Path.Combine(keepDir, romName + "." + items[index].Ext), true);
+                        foreach (var cand in new[] { romName + "-marquee.png", romName + ".png" })
+                        {
+                            string f = Path.Combine(_config.MarqueeImagePath, system, cand);
+                            if (File.Exists(f)) { logo = f; break; }
+                        }
                     }
-                    catch (Exception ex) { _logger.LogWarning($"[Overrides] Could not keep the animated file: {ex.Message}"); }
-                    stillFrame = _imageService.ExtractFirstFrame(tmp);
+                    string customDir = Path.Combine(_config.GameCustomMarqueePath, system);
+                    string mp4 = Path.Combine(customDir, romName + ".mp4");
+                    ShowOsd("Converting the animated background...");
+                    bool ok = await Task.Run(() => _imageService.BuildAnimatedMarquee(tmp, string.IsNullOrEmpty(logo) ? null : logo, mp4));
+                    if (ok)
+                    {
+                        target = mp4;
+                        osd = string.IsNullOrEmpty(logo) ? "Animated marquee saved (no logo found)" : "Animated marquee saved";
+                        foreach (var ext in new[] { ".png", ".jpg", ".jpeg", ".svg" })
+                            if (File.Exists(Path.Combine(customDir, romName + ext)))
+                                _logger.LogWarning($"[Overrides] {romName}{ext} in the custom games folder is found before the .mp4; remove it to see the animation.");
+                    }
+                    else
+                    {
+                        // EN: conversion failed (e.g. animated webp this ffmpeg cannot read): fall back to the first frame as a normal background.
+                        string? still = _imageService.ExtractFirstFrame(tmp);
+                        if (still != null)
+                        {
+                            target = _scrapeOverrides.ReplaceMedia(system, romName, still, isHero: true);
+                            try { File.Delete(still); } catch { }
+                        }
+                        osd = target != null ? "Could not make the animation; used its first frame" : "Could not use that animated background";
+                    }
                 }
-                string? source = stillFrame ?? (animatedPick ? null : tmp);
-                string? target = source == null ? null : _scrapeOverrides.ReplaceMedia(system, romName, source, isHero: true);
-                try { if (tmp != null) File.Delete(tmp); if (stillFrame != null) File.Delete(stillFrame); } catch { }
+                else if (tmp != null)
+                {
+                    target = _scrapeOverrides.ReplaceMedia(system, romName, tmp, isHero: true);
+                    osd = target != null ? "Background replaced" : "Could not download that background";
+                }
+                try { if (tmp != null) File.Delete(tmp); } catch { }
 
                 await HandleGameSelected(system, title, _currentGameRom ?? "");
-                ShowOsd(target != null ? (animatedPick ? "Background replaced (still frame of the animated one)" : "Background replaced") : "Could not download that background");
+                ShowOsd(osd);
             }
             catch (Exception ex)
             {
