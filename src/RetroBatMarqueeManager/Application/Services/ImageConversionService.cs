@@ -2123,7 +2123,7 @@ namespace RetroBatMarqueeManager.Application.Services
             bool anchorAuto = string.Equals(_config.BackgroundAnchor, "auto", StringComparison.OrdinalIgnoreCase)
                               && effFit == "width" && offsetX == 0 && offsetY == 0 && Math.Abs(fanartScale - 1.0) < 0.001
                               && subFolder != "video_preview";
-            string sigFit = effFit + (anchorAuto ? "|anc1" : "|anc0") + "|laf" + (logoAutoFit ? $"{_config.LogoMaxWidthPercent}x{_config.LogoMaxHeightPercent}" : "0");
+            string sigFit = effFit + (anchorAuto ? "|anc1" : "|anc0") + "|laf" + (logoAutoFit ? $"{_config.LogoMaxWidthPercent}x{_config.LogoMaxHeightPercent}a{_config.LogoAreaPercent}" : "0");
             if (string.IsNullOrEmpty(fanartPath) || !File.Exists(fanartPath)) return logoPath;
             if (string.IsNullOrEmpty(logoPath) || !File.Exists(logoPath)) return fanartPath; 
             
@@ -2314,7 +2314,10 @@ namespace RetroBatMarqueeManager.Application.Services
                     args.Add("-trim"); args.Add("+repage");
                     int boxW = Math.Max(1, (int)Math.Round(w * _config.LogoMaxWidthPercent / 100.0 * logoScale));
                     int boxH = Math.Max(1, (int)Math.Round(h * _config.LogoMaxHeightPercent / 100.0 * logoScale));
-                    args.Add("-resize"); args.Add($"{boxW}x{boxH}");
+                    // EN: first give every logo the same pixel AREA (equal visual weight), then shrink it only if it exceeds the width/height caps.
+                    long area = Math.Max(1L, (long)Math.Round((double)w * h * _config.LogoAreaPercent / 100.0 * logoScale * logoScale));
+                    args.Add("-resize"); args.Add($"{area}@");
+                    args.Add("-resize"); args.Add($"{boxW}x{boxH}>");
                 }
                 else
                 {

@@ -103,6 +103,7 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         bool LogoAutoFit { get; } // EN: true = logos without a saved size/position are trimmed and fitted inside LogoMaxWidthPercent x LogoMaxHeightPercent of the marquee, centered
         int LogoMaxWidthPercent { get; }
         int LogoMaxHeightPercent { get; }
+        int LogoAreaPercent { get; } // EN: every logo gets this share of the marquee AREA (so all logos look equally big); the max width/height are only caps.
         bool UseRomsFolderBackgrounds { get; } // EN: false (default) = never take backgrounds from roms\<system>; only scrapers and Ctrl+I
         string BackgroundFit { get; } // EN: how a background is fitted to the marquee: width (default), cover, stretch, contain
         string MarqueeLayout { get; } // "standard", "gradient-left", "gradient-right"
