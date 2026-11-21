@@ -8,7 +8,7 @@ namespace RetroBatMarqueeManager.Application.Services
     {
         private readonly string _storagePath;
         private readonly ILogger<OffsetStorageService> _logger;
-        private Dictionary<string, SystemOffsetData> _offsets = new();
+        private Dictionary<string, SystemOffsetData> _offsets = new(StringComparer.OrdinalIgnoreCase); // EN: 'Windows' (EmulationStation) and 'windows' (folder) are the same system
 
         public OffsetStorageService(ILogger<OffsetStorageService> logger)
         {
@@ -95,7 +95,19 @@ namespace RetroBatMarqueeManager.Application.Services
             {
                 var json = File.ReadAllText(_storagePath);
                 var data = JsonSerializer.Deserialize<Dictionary<string, SystemOffsetData>>(json);
-                if (data != null) _offsets = data;
+                if (data != null)
+                {
+                    // EN: Merge keys that differ only by case. The EmulationStation spelling (e.g. 'Windows') wins on conflict:
+                    // that is the one the user was looking at when adjusting.
+                    var merged = new Dictionary<string, SystemOffsetData>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kv in data.OrderBy(k => k.Key == k.Key.ToLowerInvariant() ? 0 : 1))
+                    {
+                        if (!merged.TryGetValue(kv.Key, out var target)) { merged[kv.Key] = kv.Value; continue; }
+                        foreach (var g in kv.Value.Games) target.Games[g.Key] = g.Value;
+                    }
+                    if (merged.Count != data.Count) _logger.LogInformation($"[Offsets] Merged {data.Count - merged.Count} system entries that differed only by letter case.");
+                    _offsets = merged;
+                }
             }
             catch (Exception ex)
             {

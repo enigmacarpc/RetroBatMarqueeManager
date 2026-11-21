@@ -13,7 +13,7 @@ namespace RetroBatMarqueeManager.Application.Services
         
         // EN: Hierarchical structure matching OffsetStorageService: System → Game → Offsets
         // FR: Structure hiérarchique similaire à OffsetStorageService : System →Game → Offsets
-        private Dictionary<string, SystemVideoOffsetData> _globalOffsets = new();
+        private Dictionary<string, SystemVideoOffsetData> _globalOffsets = new(StringComparer.OrdinalIgnoreCase);
 
         public VideoOffsetStorageService(ILogger<VideoOffsetStorageService> logger)
         {
@@ -200,7 +200,16 @@ namespace RetroBatMarqueeManager.Application.Services
             {
                 var json = File.ReadAllText(_globalStoragePath);
                 var data = JsonSerializer.Deserialize<Dictionary<string, SystemVideoOffsetData>>(json);
-                if (data != null) _globalOffsets = data;
+                if (data != null)
+                {
+                    var merged = new Dictionary<string, SystemVideoOffsetData>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kv in data.OrderBy(k => k.Key == k.Key.ToLowerInvariant() ? 0 : 1))
+                    {
+                        if (!merged.TryGetValue(kv.Key, out var target)) { merged[kv.Key] = kv.Value; continue; }
+                        foreach (var g in kv.Value.Games) target.Games[g.Key] = g.Value;
+                    }
+                    _globalOffsets = merged;
+                }
             }
             catch (Exception ex)
             {
