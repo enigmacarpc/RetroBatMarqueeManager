@@ -127,8 +127,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         public string ComposeMedia => GetValue("ComposeMedia", "fanart"); // fanart or image
         public string BackgroundAnchor => GetValue("BackgroundAnchor", "auto");
         public bool LogoAutoFit => GetValue("LogoAutoFit", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
-        public int LogoMaxWidthPercent => int.TryParse(GetValue("LogoMaxWidthPercent", "55"), out var lw) ? Math.Clamp(lw, 10, 100) : 55;
-        public int LogoMaxHeightPercent => int.TryParse(GetValue("LogoMaxHeightPercent", "75"), out var lh) ? Math.Clamp(lh, 10, 100) : 75;
+        public int LogoMaxWidthPercent => int.TryParse(GetValue("LogoMaxWidthPercent", "45"), out var lw) ? Math.Clamp(lw, 10, 100) : 45;
+        public int LogoMaxHeightPercent => int.TryParse(GetValue("LogoMaxHeightPercent", "72"), out var lh) ? Math.Clamp(lh, 10, 100) : 72;
         public bool UseRomsFolderBackgrounds => GetValue("UseRomsFolderBackgrounds", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
         public string BackgroundFit => GetValue("BackgroundFit", "width");
         public string MarqueeLayout => GetValue("MarqueeLayout", "gradient-standard"); // standard, gradient-left, gradient-right, gradient-standard
@@ -632,8 +632,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "UseRomsFolderBackgrounds", "false" },
                 { "BackgroundAnchor", "auto" },
                 { "LogoAutoFit", "true" },
-                { "LogoMaxWidthPercent", "55" },
-                { "LogoMaxHeightPercent", "75" },
+                { "LogoMaxWidthPercent", "45" },
+                { "LogoMaxHeightPercent", "72" },
                 { "MarqueeAutoConvert", "true" },
                 { "MarqueeVideoGeneration", "false" },
                 { "MarqueeAutoScraping", "false" },
@@ -875,12 +875,12 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 sb.AppendLine("; How a background is fitted to the marquee: width = fill the width, crop top/bottom (default); cover = fill both directions, crop the overflow; stretch = force exactly MarqueeWidth x MarqueeHeight (distorts); contain = whole image visible, empty bars filled with the background color");
                 WriteKey(sb, "BackgroundFit", "width");
                 WriteKey(sb, "UseRomsFolderBackgrounds", "false");
-                sb.AppendLine("; Logos that have no saved size/position are trimmed of empty margins, fitted inside this share of the marquee and centered. Logos you adjusted by hand keep their saved size. Set LogoAutoFit=false for the old behaviour.");
+                sb.AppendLine("; Every logo is trimmed of empty margins, fitted inside this share of the marquee and centered. A logo size you set with the B / N keys multiplies this base size. Set LogoAutoFit=false for the old behaviour.");
                 sb.AppendLine("; Which part of a tall background is shown when BackgroundFit=width: auto = the slice with the most detail and skin tones (keeps heads in view), leaning to the top; center = always the middle. A background you moved by hand is never changed.");
                 WriteKey(sb, "BackgroundAnchor", "auto");
                 WriteKey(sb, "LogoAutoFit", "true");
-                WriteKey(sb, "LogoMaxWidthPercent", "55");
-                WriteKey(sb, "LogoMaxHeightPercent", "75");
+                WriteKey(sb, "LogoMaxWidthPercent", "45");
+                WriteKey(sb, "LogoMaxHeightPercent", "72");
                 WriteKey(sb, "MarqueeAutoConvert", "true");
                 WriteKey(sb, "MarqueeVideoGeneration", "false"); // Added
 

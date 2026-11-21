@@ -2116,8 +2116,9 @@ namespace RetroBatMarqueeManager.Application.Services
         {
             string effFit = (fit ?? _config.BackgroundFit ?? "width").Trim().ToLowerInvariant();
             // EN: logos with no saved size/position are auto-fitted (trimmed, limited to a share of the marquee, centered).
-            bool logoAutoFit = _config.LogoAutoFit && subFolder != "video_preview"
-                               && Math.Abs(logoScale - 1.0) < 0.001 && logoOffsetX == 0 && logoOffsetY == 0;
+            // EN: Auto-fit is the base size for EVERY logo. A saved logo scale (B / N keys) multiplies that base, so moving or resizing a logo
+            // never makes it jump to a different base size.
+            bool logoAutoFit = _config.LogoAutoFit && subFolder != "video_preview";
             // EN: automatic vertical placement of tall backgrounds (only when the user has not moved/scaled this background by hand).
             bool anchorAuto = string.Equals(_config.BackgroundAnchor, "auto", StringComparison.OrdinalIgnoreCase)
                               && effFit == "width" && offsetX == 0 && offsetY == 0 && Math.Abs(fanartScale - 1.0) < 0.001
@@ -2311,8 +2312,8 @@ namespace RetroBatMarqueeManager.Application.Services
                 {
                     // EN: drop transparent margins so the artwork itself is what gets sized and centered, then fit it inside the allowed box.
                     args.Add("-trim"); args.Add("+repage");
-                    int boxW = Math.Max(1, w * _config.LogoMaxWidthPercent / 100);
-                    int boxH = Math.Max(1, h * _config.LogoMaxHeightPercent / 100);
+                    int boxW = Math.Max(1, (int)Math.Round(w * _config.LogoMaxWidthPercent / 100.0 * logoScale));
+                    int boxH = Math.Max(1, (int)Math.Round(h * _config.LogoMaxHeightPercent / 100.0 * logoScale));
                     args.Add("-resize"); args.Add($"{boxW}x{boxH}");
                 }
                 else
