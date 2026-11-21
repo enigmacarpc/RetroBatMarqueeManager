@@ -1893,7 +1893,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     var logoW = (int)(w * 0.9);
                     args.Add("(");
                     args.Add("-background"); args.Add("none"); // CRITICAL: Transparent background for SVG/PNG
-                    args.Add(logoPath);
+                    args.Add(ShrinkOversizedLogo(logoPath));
                     args.Add("-resize"); args.Add($"{logoW}x{logoH}>");
                     args.Add(")");
 
@@ -1962,6 +1962,70 @@ namespace RetroBatMarqueeManager.Application.Services
             }
         }
         
+        // EN: A marquee never needs a logo bigger than a few thousand pixels. Some downloaded logos are huge (e.g. 11486x9058 = 104 MP):
+        // ImageMagick can run out of memory reading them and silently leave the logo out of the composition.
+        // Such logos are shrunk once into _cache\_logo_small and that copy is composed instead. The original is never touched.
+        private const int MaxLogoSide = 3000;
+        private readonly object _shrinkLock = new();
+
+        private string ShrinkOversizedLogo(string logoPath)
+        {
+            try
+            {
+                if (!string.Equals(Path.GetExtension(logoPath), ".png", StringComparison.OrdinalIgnoreCase)) return logoPath;
+                var head = new byte[24];
+                using (var fs = new FileStream(logoPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (fs.Read(head, 0, 24) < 24) return logoPath;
+                }
+                int w = (head[16] << 24) | (head[17] << 16) | (head[18] << 8) | head[19];
+                int h = (head[20] << 24) | (head[21] << 16) | (head[22] << 8) | head[23];
+                if (w <= MaxLogoSide && h <= MaxLogoSide) return logoPath;
+
+                var info = new FileInfo(logoPath);
+                string key = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(
+                    System.Text.Encoding.UTF8.GetBytes($"{logoPath.ToLowerInvariant()}|{info.Length}|{info.LastWriteTimeUtc.Ticks}"))).Substring(0, 16);
+                string dir = Path.Combine(_config.CachePath, "_logo_small");
+                Directory.CreateDirectory(dir);
+                string small = Path.Combine(dir, key + ".png");
+                if (File.Exists(small) && new FileInfo(small).Length > 0) return small;
+
+                lock (_shrinkLock)
+                {
+                    if (File.Exists(small) && new FileInfo(small).Length > 0) return small;
+                    string tmp = small + ".tmp.png";
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = _config.IMPath,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true,
+                        WorkingDirectory = Path.GetDirectoryName(_config.IMPath)
+                    };
+                    foreach (var a in new[] { "-limit", "memory", "4GiB", "-limit", "map", "8GiB", "-limit", "area", "2GP", "-limit", "disk", "8GiB",
+                                              "-background", "none", logoPath, "-resize", "2000x2000>", "-strip", tmp })
+                        psi.ArgumentList.Add(a);
+                    using var proc = Process.Start(psi);
+                    if (proc == null) return logoPath;
+                    var err = proc.StandardError.ReadToEndAsync();
+                    if (!proc.WaitForExit(60000)) { try { proc.Kill(); } catch { } return logoPath; }
+                    if (File.Exists(tmp) && new FileInfo(tmp).Length > 0)
+                    {
+                        File.Move(tmp, small, true);
+                        _logger.LogInformation($"[Logo] Oversized logo {w}x{h} shrunk for composition: {Path.GetFileName(logoPath)} -> {small}");
+                        return small;
+                    }
+                    _logger.LogWarning($"[Logo] Could not shrink oversized logo {w}x{h} ({Path.GetFileName(logoPath)}): {err.Result}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Logo] Oversized-logo check failed for {Path.GetFileName(logoPath)}: {ex.Message}");
+            }
+            return logoPath;
+        }
+
         public string GenerateComposition(string fanartPath, string logoPath, string subFolder, int offsetX = 0, int offsetY = 0, int logoOffsetX = 0, int logoOffsetY = 0, double fanartScale = 1.0, double logoScale = 1.0, bool isPreview = false, string? fit = null)
         {
             string effFit = (fit ?? _config.BackgroundFit ?? "width").Trim().ToLowerInvariant();
@@ -2146,7 +2210,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 var scaledLogoH = (int)(logoH * logoScale);
                 args.Add("(");
                 args.Add("-background"); args.Add("none");
-                args.Add(logoPath);
+                args.Add(ShrinkOversizedLogo(logoPath));
                 args.Add("-resize"); args.Add($"{logoW}x{scaledLogoH}"); // Fit within bounds (allow both shrink and enlarge)
                 args.Add(")");
 
