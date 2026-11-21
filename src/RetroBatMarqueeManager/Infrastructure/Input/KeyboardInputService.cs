@@ -136,6 +136,22 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
 
             // Video Trimming Shortcuts
             // Only trigger if CTRL is held (and not Alt/Shift preferably, similar to VideoMode)
+            // EN: Ctrl+I (also Ctrl+Shift+I): image picker / trim start (one-shot).
+            if (ctrlPressed && !altPressed)
+            {
+                bool isIDown = (GetAsyncKeyState(0x49) & 0x8000) != 0; // VK_I
+                if (isIDown && !_wasIDown)
+                {
+                    OnTrimStart?.Invoke();
+                    _lastInputTime = DateTime.Now;
+                }
+                _wasIDown = isIDown;
+            }
+            else
+            {
+                _wasIDown = (GetAsyncKeyState(0x49) & 0x8000) != 0;
+            }
+
             if (ctrlPressed && !altPressed && !shiftPressed)
             {
                 // Ctrl+P: Toggle Playback (One-Shot)
@@ -146,15 +162,6 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
                     _lastInputTime = DateTime.Now;
                 }
                 _wasPDown = isPDown;
-                
-                // Ctrl+I: Trim Start (One-Shot)
-                bool isIDown = (GetAsyncKeyState(0x49) & 0x8000) != 0; // VK_I
-                if (isIDown && !_wasIDown)
-                {
-                    OnTrimStart?.Invoke();
-                    _lastInputTime = DateTime.Now;
-                }
-                _wasIDown = isIDown;
                 
                 // Ctrl+O: Trim End (One-Shot)
                 bool isODown = (GetAsyncKeyState(0x4F) & 0x8000) != 0; // VK_O
@@ -173,7 +180,6 @@ namespace RetroBatMarqueeManager.Infrastructure.Input
                 // For safety, if Ctrl is NOT pressed, we can assume 'Hotkeys' are not down in a valid combo.
                 // But better to simply respect the key physical state:
                 _wasPDown = (GetAsyncKeyState(0x50) & 0x8000) != 0;
-                _wasIDown = (GetAsyncKeyState(0x49) & 0x8000) != 0;
                 _wasODown = (GetAsyncKeyState(0x4F) & 0x8000) != 0;
             }
         }
