@@ -125,6 +125,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
         
         // Composition Settings
         public string ComposeMedia => GetValue("ComposeMedia", "fanart"); // fanart or image
+        public string BackgroundAnchor => GetValue("BackgroundAnchor", "auto");
         public bool LogoAutoFit => GetValue("LogoAutoFit", "true").Equals("true", StringComparison.OrdinalIgnoreCase);
         public int LogoMaxWidthPercent => int.TryParse(GetValue("LogoMaxWidthPercent", "55"), out var lw) ? Math.Clamp(lw, 10, 100) : 55;
         public int LogoMaxHeightPercent => int.TryParse(GetValue("LogoMaxHeightPercent", "75"), out var lh) ? Math.Clamp(lh, 10, 100) : 75;
@@ -629,6 +630,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 { "MarqueeLayout", "gradient-standard" },
                 { "BackgroundFit", "width" },
                 { "UseRomsFolderBackgrounds", "false" },
+                { "BackgroundAnchor", "auto" },
                 { "LogoAutoFit", "true" },
                 { "LogoMaxWidthPercent", "55" },
                 { "LogoMaxHeightPercent", "75" },
@@ -754,6 +756,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 _settings["MarqueeLayout"] = "gradient-standard";
                 _settings["BackgroundFit"] = "width";
                 _settings["UseRomsFolderBackgrounds"] = "false";
+                _settings["BackgroundAnchor"] = "auto";
                 _settings["LogoAutoFit"] = "true";
                 _settings["LogoMaxWidthPercent"] = "55";
                 _settings["LogoMaxHeightPercent"] = "75";
@@ -873,6 +876,8 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                 WriteKey(sb, "BackgroundFit", "width");
                 WriteKey(sb, "UseRomsFolderBackgrounds", "false");
                 sb.AppendLine("; Logos that have no saved size/position are trimmed of empty margins, fitted inside this share of the marquee and centered. Logos you adjusted by hand keep their saved size. Set LogoAutoFit=false for the old behaviour.");
+                sb.AppendLine("; Which part of a tall background is shown when BackgroundFit=width: auto = the slice with the most detail and skin tones (keeps heads in view), leaning to the top; center = always the middle. A background you moved by hand is never changed.");
+                WriteKey(sb, "BackgroundAnchor", "auto");
                 WriteKey(sb, "LogoAutoFit", "true");
                 WriteKey(sb, "LogoMaxWidthPercent", "55");
                 WriteKey(sb, "LogoMaxHeightPercent", "75");
@@ -1060,7 +1065,7 @@ namespace RetroBatMarqueeManager.Infrastructure.Configuration
                     "DmdEnabled", "DmdModel", "DmdExePath", "DmdMediaPath", "SystemCustomDMDPath", "DmdGameStartMediaPath", "DmdCompose", "DmdFormat", "DmdArguments", "DmdWidth", "DmdHeight", "DmdDotSize",
                     "ScreenNumber",
                     "pinballfx", "pinballfx2", "pinballfx3", "fpinball", "zaccariapinball", "custom1",
-                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "UseRomsFolderBackgrounds", "LogoAutoFit", "LogoMaxWidthPercent", "LogoMaxHeightPercent", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
+                    "MPVScrapMediaType", "DMDScrapMediaType", "RetryMissingOnStart", "RetroBatExitGraceSeconds", "RetroBatProcessNames", "BackgroundFit", "UseRomsFolderBackgrounds", "BackgroundAnchor", "LogoAutoFit", "LogoMaxWidthPercent", "LogoMaxHeightPercent", "ScreenScraperUser", "ScreenScraperPass", "ScreenScraperDevId", "ScreenScraperDevPassword", "MarqueeGlobalScraping", "ScreenScraperThreads",
                     "ScreenScraperQueueLimit", "ScreenScraperQueueKeep",
                     "RetroAchievementsWebApiKey", "GenerateMarqueeVideoFolder", "FfmpegHwEncoding", "MarqueeRetroAchievementsOverlays", "RAFontFamily", "PrioritySource", "ArcadeItaliaUrl", "ArcadeItaliaMediaType", "SteamGridDbApiKey", "SteamGridDbMedia", "SteamMedia", "IgdbClientId", "IgdbClientSecret", "IgdbMedia", "MarqueeRetroAchievementsDisplayTarget",
                     "MpvRetroAchievementsOverlays", "DmdRetroAchievementsOverlays",

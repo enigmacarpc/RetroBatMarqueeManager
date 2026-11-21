@@ -99,6 +99,7 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         
         // Composition Settings
         string ComposeMedia { get; } // "fanart" or "image"
+        string BackgroundAnchor { get; } // EN: auto (default) = pick the vertical slice of a tall background with the most detail/faces; center = always the middle
         bool LogoAutoFit { get; } // EN: true = logos without a saved size/position are trimmed and fitted inside LogoMaxWidthPercent x LogoMaxHeightPercent of the marquee, centered
         int LogoMaxWidthPercent { get; }
         int LogoMaxHeightPercent { get; }

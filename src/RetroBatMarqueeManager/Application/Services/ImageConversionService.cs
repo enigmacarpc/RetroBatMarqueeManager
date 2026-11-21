@@ -1965,6 +1965,92 @@ namespace RetroBatMarqueeManager.Application.Services
         // EN: A marquee never needs a logo bigger than a few thousand pixels. Some downloaded logos are huge (e.g. 11486x9058 = 104 MP):
         // ImageMagick can run out of memory reading them and silently leave the logo out of the composition.
         // Such logos are shrunk once into _cache\_logo_small and that copy is composed instead. The original is never touched.
+        // EN: Automatic vertical placement. The background is scaled to the marquee width; if it is taller than the marquee, only a slice shows.
+        // The slice with the most detail, colour contrast against the picture's overall colour and skin tones wins, leaning toward the top
+        // (heads are usually in the upper part). Returns the extra Y offset (pixels, relative to the centered slice) for ImageMagick's -geometry.
+        private int ComputeAutoAnchorOffsetY(string fanartPath, int canvasW, int canvasH)
+        {
+            try
+            {
+                using var src = new Bitmap(fanartPath);
+                if (src.Width <= 0 || src.Height <= 0) return 0;
+                double hr = src.Height * (double)canvasW / src.Width;   // height once scaled to the marquee width
+                if (hr <= canvasH + 1) return 0;                         // nothing is cropped vertically
+                const int sw = 240;
+                int sh = Math.Max(8, (int)Math.Round(src.Height * (double)sw / src.Width));
+                using var small = new Bitmap(sw, sh);
+                using (var gfx = Graphics.FromImage(small))
+                {
+                    gfx.InterpolationMode = InterpolationMode.HighQualityBilinear;
+                    gfx.DrawImage(src, new Rectangle(0, 0, sw, sh));
+                }
+                var R = new int[sh, sw]; var G = new int[sh, sw]; var B = new int[sh, sw];
+                var hist = new int[3, 256];
+                for (int y = 0; y < sh; y++)
+                    for (int x = 0; x < sw; x++)
+                    {
+                        var c = small.GetPixel(x, y);
+                        R[y, x] = c.R; G[y, x] = c.G; B[y, x] = c.B;
+                        hist[0, c.R]++; hist[1, c.G]++; hist[2, c.B]++;
+                    }
+                var med = new double[3]; int half = sw * sh / 2;
+                for (int ch = 0; ch < 3; ch++) { int acc = 0; for (int v = 0; v < 256; v++) { acc += hist[ch, v]; if (acc >= half) { med[ch] = v; break; } } }
+
+                int rows = sh - 1, cols = sw - 1;
+                var gray = new double[sh, sw];
+                for (int y = 0; y < sh; y++) for (int x = 0; x < sw; x++) gray[y, x] = 0.299 * R[y, x] + 0.587 * G[y, x] + 0.114 * B[y, x];
+                var edge = new double[rows, cols]; var dist = new double[rows, cols]; var skin = new double[rows, cols];
+                double eMax = 1e-6, dMax = 1e-6;
+                for (int y = 0; y < rows; y++)
+                    for (int x = 0; x < cols; x++)
+                    {
+                        double gx = Math.Abs(gray[y, x + 1] - gray[y, x]), gy = Math.Abs(gray[y + 1, x] - gray[y, x]);
+                        edge[y, x] = Math.Sqrt(gx * gx + gy * gy);
+                        double dr = R[y, x] - med[0], dg = G[y, x] - med[1], db = B[y, x] - med[2];
+                        dist[y, x] = Math.Sqrt(dr * dr + dg * dg + db * db);
+                        eMax = Math.Max(eMax, edge[y, x]); dMax = Math.Max(dMax, dist[y, x]);
+                        int r = R[y, x], g = G[y, x], b = B[y, x];
+                        int mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
+                        double sat = (mx - mn) / (mx + 1e-6);
+                        if (r > 95 && g > 40 && b > 20 && r > g && r > b && (r - Math.Min(g, b)) > 15 && sat > 0.1 && sat < 0.75) skin[y, x] = 1;
+                    }
+                var rowSum = new double[rows];
+                for (int y = 0; y < rows; y++)
+                {
+                    double acc = 0;
+                    for (int x = 0; x < cols; x++)
+                    {
+                        double t = -1 + 2.0 * x / Math.Max(1, cols - 1);
+                        double cw = Math.Exp(-(t * t) / (2 * 0.6 * 0.6));   // subjects are usually more central than the edges
+                        acc += (edge[y, x] / eMax + 0.6 * dist[y, x] / dMax + 1.5 * skin[y, x]) * cw;
+                    }
+                    rowSum[y] = acc;
+                }
+                int win = (int)Math.Round(canvasH / hr * rows);
+                if (win >= rows || win < 1) return 0;
+                var cs = new double[rows + 1];
+                for (int i = 0; i < rows; i++) cs[i + 1] = cs[i] + rowSum[i];
+                int slack = rows - win; double bestScore = double.MinValue; int bestSt = slack / 2;
+                for (int st = 0; st <= slack; st++)
+                {
+                    double score = cs[st + win] - cs[st];
+                    double pos = slack > 0 ? (double)st / slack : 0.5;
+                    score *= 1 - 0.25 * Math.Max(0, pos - 0.35);              // lean toward the top
+                    if (score > bestScore) { bestScore = score; bestSt = st; }
+                }
+                double ws = bestSt * hr / rows;                                  // slice start, in marquee-width pixels
+                ws = Math.Min(Math.Max(0, ws), hr - canvasH);
+                int dy = (int)Math.Round((hr - canvasH) / 2.0 - ws);            // + moves the picture down (shows more of the top)
+                _logger.LogInformation($"[Anchor] {Path.GetFileName(fanartPath)}: auto vertical offset {dy:+#;-#;0}px (slice start {ws:F0} of {hr - canvasH:F0})");
+                return dy;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[Anchor] Automatic placement failed for {Path.GetFileName(fanartPath)}: {ex.Message}");
+                return 0;
+            }
+        }
+
         private const int MaxLogoSide = 3000;
         private readonly object _shrinkLock = new();
 
@@ -2032,7 +2118,11 @@ namespace RetroBatMarqueeManager.Application.Services
             // EN: logos with no saved size/position are auto-fitted (trimmed, limited to a share of the marquee, centered).
             bool logoAutoFit = _config.LogoAutoFit && subFolder != "video_preview"
                                && Math.Abs(logoScale - 1.0) < 0.001 && logoOffsetX == 0 && logoOffsetY == 0;
-            string sigFit = effFit + "|laf" + (logoAutoFit ? $"{_config.LogoMaxWidthPercent}x{_config.LogoMaxHeightPercent}" : "0");
+            // EN: automatic vertical placement of tall backgrounds (only when the user has not moved/scaled this background by hand).
+            bool anchorAuto = string.Equals(_config.BackgroundAnchor, "auto", StringComparison.OrdinalIgnoreCase)
+                              && effFit == "width" && offsetX == 0 && offsetY == 0 && Math.Abs(fanartScale - 1.0) < 0.001
+                              && subFolder != "video_preview";
+            string sigFit = effFit + (anchorAuto ? "|anc1" : "|anc0") + "|laf" + (logoAutoFit ? $"{_config.LogoMaxWidthPercent}x{_config.LogoMaxHeightPercent}" : "0");
             if (string.IsNullOrEmpty(fanartPath) || !File.Exists(fanartPath)) return logoPath;
             if (string.IsNullOrEmpty(logoPath) || !File.Exists(logoPath)) return fanartPath; 
             
@@ -2130,6 +2220,8 @@ namespace RetroBatMarqueeManager.Application.Services
                     "contain" => $"{fanartW}x{fanartH}",   // whole image visible
                     _ => $"{fanartW}x"                     // width: fill width, crop top/bottom
                 };
+                int effOffsetY = offsetY;
+                if (anchorAuto) effOffsetY += ComputeAutoAnchorOffsetY(fanartPath, w, h);
                 var args = new List<string>
                 {
                     "-size", $"{w}x{h}", $"xc:{bg}", // Base Canvas
@@ -2139,7 +2231,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     "-resize", fanartResize,
                     ")",
                     "-gravity", "Center",
-                    "-geometry", $"{ (offsetX >= 0 ? "+" : "") }{offsetX}{ (offsetY >= 0 ? "+" : "") }{offsetY}",
+                    "-geometry", $"{ (offsetX >= 0 ? "+" : "") }{offsetX}{ (effOffsetY >= 0 ? "+" : "") }{effOffsetY}",
                     "-composite"
                 };
 
