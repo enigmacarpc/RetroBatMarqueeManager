@@ -48,6 +48,18 @@ namespace RetroBatMarqueeManager.Application.Services
         private readonly string _overridesPath;
         private readonly string _rejectedPath;
         private readonly string _noLogoPath;
+        // EN: games whose logo was chosen by hand with Ctrl+I: that choice beats the logo found in the roms folder.
+        private string _manualLogoPath = "";
+        private readonly HashSet<string> _manualLogo = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private bool IsManualLogo(string systemName, string romName) { lock (_lock) return _manualLogo.Contains(Key(systemName, romName)); }
+        private void LoadManualLogo()
+        {
+            try { if (File.Exists(_manualLogoPath)) { var l = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(_manualLogoPath)); if (l != null) foreach (var i in l) _manualLogo.Add(i); } } catch { }
+        }
+        private void SaveManualLogo()
+        {
+            try { File.WriteAllText(_manualLogoPath, JsonSerializer.Serialize(_manualLogo.ToList())); } catch { }
+        }
         private readonly HashSet<string> _noLogo = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private readonly object _lock = new object();
@@ -64,6 +76,8 @@ namespace RetroBatMarqueeManager.Application.Services
             _rejectedPath = Path.Combine(_config.MarqueeImagePath, "_cache", "scrape_rejected.json");
             _noLogoPath = Path.Combine(_config.MarqueeImagePath, "_cache", "no_logo.json");
             _fitPath = Path.Combine(_config.MarqueeImagePath, "_cache", "bg_fit.json");
+            _manualLogoPath = Path.Combine(_config.MarqueeImagePath, "_cache", "manual_logo.json");
+            LoadManualLogo();
             LoadFit();
             LoadRejected();
             LoadNoLogo();
@@ -296,7 +310,11 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 if (!isHero)
                 {
-                    lock (_lock) { if (_noLogo.Remove(Key(systemName, romName))) SaveNoLogo(); }
+                    lock (_lock)
+                    {
+                        if (_noLogo.Remove(Key(systemName, romName))) SaveNoLogo();
+                        if (_manualLogo.Add(Key(systemName, romName))) SaveManualLogo();
+                    }
                 }
                 DeleteComposed(systemName, romName);
                 _logger.LogInformation($"[Overrides] Using chosen {(isHero ? "background" : "logo")}: {sourceFile} -> {target}");
@@ -425,11 +443,11 @@ namespace RetroBatMarqueeManager.Application.Services
         // ------------------------------------------------------------------ own images from roms\<system>
 
         private static readonly string[] HeroMediaDirs = { "images", "media\\fanart", "media\\fanarts", "fanart", "downloaded_images" };
-        private static readonly string[] LogoMediaDirs = { "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos", "downloaded_images" };
+        private static readonly string[] LogoMediaDirs = { "downloaded_images", "images", "media\\wheel", "media\\wheels", "media\\logo", "media\\logos", "wheel", "logos" };
         private static readonly string[] HeroSuffixes = { "-fanart", "_fanart", "-hero" };
         // EN: Last resort background when a game has no real hero: its in-game screenshot (NOT -image/-mix: those are box-art collages).
         private static readonly string[] ScreenshotSuffixes = { "-screenshot", "_screenshot" };
-        private static readonly string[] LogoSuffixes = { "-wheel", "-logo", "_wheel", "_logo", "-marquee" }; // EN: "-marquee" last: RetroBat saves the scraped logo/wheel under that name
+        private static readonly string[] LogoSuffixes = { "-marquee", "-wheel", "-logo", "_wheel", "_logo" }; // EN: "-marquee" first: RetroBat/ARRM saves the logo as {game}-marquee.png in downloaded_images
 
         /// <summary>
         /// EN: Copy the user's own hero/logo into the staging folder as {rom}-fanart / {rom}. Looks in
@@ -480,6 +498,7 @@ namespace RetroBatMarqueeManager.Application.Services
             {
                 string systemDir = Path.Combine(_config.RomsPath, systemName);
                 if (!Directory.Exists(systemDir)) return null;
+                if (IsManualLogo(systemName, romName)) return null; // EN: the user picked another logo by hand
                 var entry = ReadGamelistEntry(systemDir, romName);
                 return FirstExisting(systemDir, entry.GetValueOrDefault("wheel") ?? entry.GetValueOrDefault("logo") ?? entry.GetValueOrDefault("marquee"), LogoMediaDirs, LogoSuffixes, romName);
             }

@@ -28,6 +28,22 @@ namespace RetroBatMarqueeManager.Application.Services
         private const byte VK_MENU = 0x12;
         private const uint KEYEVENTF_KEYUP = 0x0002;
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+
+        /// <summary>EN: Keeps pushing the (Explorer) file dialog with this title to the front while it opens.</summary>
+        public static void KeepDialogOnTop(string title)
+        {
+            int ticks = 0;
+            var timer = new System.Windows.Forms.Timer { Interval = 200 };
+            timer.Tick += (_, _) =>
+            {
+                if (++ticks > 10) { timer.Stop(); timer.Dispose(); return; }
+                var h = FindWindow("#32770", title);
+                if (h != IntPtr.Zero) ForceToFront(h);
+            };
+            timer.Start();
+        }
+
         public static void ForceToFront(IntPtr hwnd)
         {
             try

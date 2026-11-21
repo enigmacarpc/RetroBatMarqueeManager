@@ -77,6 +77,7 @@ namespace RetroBatMarqueeManager.Application.Services
                             CheckFileExists = true,
                             RestoreDirectory = true
                         };
+                        WindowFocus.KeepDialogOnTop(dlg.Title);
                         if (dlg.ShowDialog(form) == DialogResult.OK)
                         {
                             chosen = dlg.FileName;

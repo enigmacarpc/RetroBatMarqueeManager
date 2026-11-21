@@ -536,6 +536,14 @@ namespace RetroBatMarqueeManager.Application.Services
                         return _imageService.GenerateComposition(backgroundInfo, EnsureBlankLogo(romFileName), system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
                     }
 
+                    // EN: the user's own logo (roms\{system}\downloaded_images\{game}-marquee.png, gamelist wheel...) comes before any scraped one.
+                    var ownLogoFirst = _ownImages.FindOwnLogo(effSystem, romFileName);
+                    if (ownLogoFirst != null && !string.Equals(ownLogoFirst, backgroundInfo, StringComparison.OrdinalIgnoreCase))
+                    {
+                         _logger.LogInformation($"Auto-Generating Marquee: Background {backgroundInfo} + own logo {ownLogoFirst}");
+                         return _imageService.GenerateComposition(backgroundInfo, ownLogoFirst, system, offX, offY, logoX, logoY, fanartScale, logoScale, isPreview, bgFit);
+                    }
+
                     var topperRaw = TryFind(romFileName, systemCandidates, "-topper", raw: true) ?? TryFind(safeRomName, systemCandidates, "-topper", raw: true) ?? TryFind(gameName, systemCandidates, "-topper", raw: true) ?? TryFind(safeGameName, systemCandidates, "-topper", raw: true);
                     if (topperRaw != null)
                     {
