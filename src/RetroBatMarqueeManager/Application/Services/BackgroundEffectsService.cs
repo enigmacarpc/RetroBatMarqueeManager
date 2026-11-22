@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v4";
+        private const string Version = "v5";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -250,12 +250,19 @@ namespace RetroBatMarqueeManager.Application.Services
                 if (stars)
                 {
                     var opened = MinMax(MinMax(gray, w, h, 3, false), w, h, 3, true);
-                    var surround = Gauss(gray, w, h, 14);
+                    var surround = Gauss(gray, w, h, 10);
+                    // EN: stars only live in a dark, bluish night sky: never on snow, jets, ships or clouds.
+                    var bluish = new float[_n];
+                    for (int i = 0; i < _n; i++) bluish[i] = plain[i * 3] - plain[i * 3 + 2];
+                    bluish = Gauss(bluish, w, h, 10);
                     var score = new float[_n];
-                    for (int i = 0; i < _n; i++) { float t = gray[i] - opened[i]; score[i] = (t > 20 && gray[i] > 80 && surround[i] < 140 && satArr[i] < 120) ? t : 0f; }
+                    for (int i = 0; i < _n; i++) { float t = gray[i] - opened[i]; score[i] = (t > 20 && gray[i] > 80 && surround[i] < 75 && bluish[i] > 8 && satArr[i] < 120) ? t : 0f; }
                     float thr = TopThreshold(score, (int)(_n * 0.004), 20f);
+                    var s0 = new float[_n];
+                    for (int i = 0; i < _n; i++) s0[i] = score[i] >= thr && score[i] > 0 ? 1f : 0f;
+                    // EN: a star is a tiny dot; streaks (lightning, edges) are dropped.
                     var s = new float[_n];
-                    for (int i = 0; i < _n; i++) s[i] = score[i] >= thr && score[i] > 0 ? 1f : 0f;
+                    FilterComponents(s0, w, h, 1, 14, s);
                     s = MinMax(s, w, h, 1, true);
                     Array.Copy(s, _stars, _n);
                     _starGlow = Gauss(_stars, w, h, 3);
@@ -283,6 +290,8 @@ namespace RetroBatMarqueeManager.Application.Services
                             if (qx < minX) minX = qx; if (qx > maxX) maxX = qx; if (qy < minY) minY = qy; if (qy > maxY) maxY = qy;
                             sg += gray[q]; ss += satArr[q]; sl += contrast[q];
                         }
+                        // EN: a light cut by the picture edge (e.g. a moon half out of frame) looks wrong when it pulses: skip it.
+                        if (minX <= 1 || minY <= 1 || maxX >= w - 2 || maxY >= h - 2) return false;
                         double cnt = px.Length, bw = maxX - minX + 1, bh = maxY - minY + 1, aspect = bw / bh;
                         return ss / cnt <= 130 && sg / cnt >= 100 && sl / cnt >= 40 && aspect <= 2.0 && aspect >= 0.45;
                     });
