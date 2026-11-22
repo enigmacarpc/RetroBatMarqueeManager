@@ -107,7 +107,8 @@ namespace RetroBatMarqueeManager.Core.Interfaces
         bool BackgroundEffects { get; } // EN: default for the animated effects (Ctrl+E toggles it per game)
         bool EffectStars { get; }
         bool EffectMoon { get; }
-        bool EffectFire { get; } // EN: every logo gets this share of the marquee AREA (so all logos look equally big); the max width/height are only caps.
+        bool EffectFire { get; }
+        int EffectStrength { get; } // EN: 50-400, 100 = subtle, 150 = default // EN: every logo gets this share of the marquee AREA (so all logos look equally big); the max width/height are only caps.
         bool UseRomsFolderBackgrounds { get; } // EN: false (default) = never take backgrounds from roms\<system>; only scrapers and Ctrl+I
         string BackgroundFit { get; } // EN: how a background is fitted to the marquee: width (default), cover, stretch, contain
         string MarqueeLayout { get; } // "standard", "gradient-left", "gradient-right"

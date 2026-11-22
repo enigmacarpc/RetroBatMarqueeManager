@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v1";
+        private const string Version = "v2";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -34,7 +34,7 @@ namespace RetroBatMarqueeManager.Application.Services
         private string Signature(string composedPath)
         {
             var fi = new FileInfo(composedPath);
-            return $"{Version}|{fi.Length}|{fi.LastWriteTimeUtc.Ticks}|{(_config.EffectStars ? 1 : 0)}{(_config.EffectMoon ? 1 : 0)}{(_config.EffectFire ? 1 : 0)}|{_config.MarqueeWidth}x{_config.MarqueeHeight}";
+            return $"{Version}|{fi.Length}|{fi.LastWriteTimeUtc.Ticks}|{(_config.EffectStars ? 1 : 0)}{(_config.EffectMoon ? 1 : 0)}{(_config.EffectFire ? 1 : 0)}|{_config.EffectStrength}|{_config.MarqueeWidth}x{_config.MarqueeHeight}";
         }
 
         /// <summary>
@@ -105,7 +105,8 @@ namespace RetroBatMarqueeManager.Application.Services
             byte[]? plain = DecodeRaw(bgOnlyPath, W, H);
             if (composed == null || plain == null) return false;
 
-            var fx = new EffectsCore(W, H, plain, composed, _config.EffectStars, _config.EffectMoon, _config.EffectFire);
+            var fx = new EffectsCore(W, H, plain, composed, _config.EffectStars, _config.EffectMoon, _config.EffectFire, _config.EffectStrength / 100f);
+            _logger.LogInformation($"[Effects] Found: {fx.Summary}");
             int frames = Fps * Seconds;
 
             string tmp = mp4 + ".tmp.mp4";
@@ -220,11 +221,15 @@ namespace RetroBatMarqueeManager.Application.Services
             private readonly float[] _stars, _starGlow, _starPhase, _starSpeed, _moon, _moonHalo, _warm, _warmGlow, _warmPhase, _keep;
             private readonly bool[] _active;
             private readonly bool _doStars, _doMoon, _doFire;
+            private readonly float _k;
+            private readonly float[] _moonPhase;
+            public string Summary { get; private set; } = "";
 
-            public EffectsCore(int w, int h, byte[] plain, byte[] composed, bool stars, bool moon, bool fire)
+            public EffectsCore(int w, int h, byte[] plain, byte[] composed, bool stars, bool moon, bool fire, float strength)
             {
                 _w = w; _h = h; _n = w * h; _plain = plain; _composed = composed;
-                _doStars = stars; _doMoon = moon; _doFire = fire;
+                _doStars = stars; _doMoon = moon; _doFire = fire; _k = strength;
+                _moonPhase = new float[w * h];
                 var rng = new Random(3);
 
                 var gray = new float[_n];
@@ -239,7 +244,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     var opened = MinMax(MinMax(gray, w, h, 3, false), w, h, 3, true);
                     var surround = Gauss(gray, w, h, 14);
                     var s = new float[_n];
-                    for (int i = 0; i < _n; i++) s[i] = (gray[i] - opened[i] > 38 && gray[i] > 150 && surround[i] < 115) ? 1f : 0f;
+                    for (int i = 0; i < _n; i++) s[i] = (gray[i] - opened[i] > 20 && gray[i] > 80 && surround[i] < 140) ? 1f : 0f;
                     s = MinMax(s, w, h, 1, true);
                     Array.Copy(s, _stars, _n);
                     _starGlow = Gauss(_stars, w, h, 3);
@@ -250,11 +255,15 @@ namespace RetroBatMarqueeManager.Application.Services
 
                 if (moon)
                 {
+                    // EN: moon / lamps / big lights = clearly brighter than their surroundings (works on dark or vignetted backgrounds too).
+                    var local = Gauss(gray, w, h, 30);
                     var big = new float[_n];
-                    for (int i = 0; i < _n; i++) big[i] = gray[i] > 225 ? 1f : 0f;
-                    big = MinMax(MinMax(big, w, h, 4, false), w, h, 4, true);
-                    FilterComponents(big, w, h, 350, int.MaxValue, _moon);
+                    for (int i = 0; i < _n; i++) big[i] = (gray[i] - local[i] > 28 && gray[i] > 80) ? 1f : 0f;
+                    big = MinMax(MinMax(big, w, h, 2, false), w, h, 2, true);
+                    FilterComponents(big, w, h, 300, 6000, _moon);
                     _moonHalo = Gauss(_moon, w, h, 22);
+                    var zr = Normalize(Gauss(RandomField(rng, _n), w, h, 40));
+                    for (int i = 0; i < _n; i++) _moonPhase[i] = zr[i] * 1.6f; // lights pulse out of step with each other
                 }
 
                 if (fire)
@@ -264,9 +273,9 @@ namespace RetroBatMarqueeManager.Application.Services
                     {
                         float b = plain[i * 3], g = plain[i * 3 + 1], r = plain[i * 3 + 2];
                         float mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
-                        if (mx <= 170 || mx <= 0) continue;
+                        if (mx <= 90 || mx <= 0) continue;
                         float sat = 255f * (mx - mn) / mx;
-                        if (sat <= 120) continue;
+                        if (sat <= 110) continue;
                         float hue; float d = mx - mn;
                         if (mx == r) hue = 60f * (((g - b) / d) % 6f);
                         else if (mx == g) hue = 60f * (((b - r) / d) + 2f);
@@ -296,6 +305,9 @@ namespace RetroBatMarqueeManager.Application.Services
                     int d = Math.Abs(composed[i * 3] - plain[i * 3]) + Math.Abs(composed[i * 3 + 1] - plain[i * 3 + 1]) + Math.Abs(composed[i * 3 + 2] - plain[i * 3 + 2]);
                     _keep[i] = Math.Min(1f, d / 20f);
                 }
+                int cs = 0, cm = 0, cw = 0;
+                for (int i = 0; i < _n; i++) { if (_stars[i] > 0) cs++; if (_moon[i] > 0) cm++; if (_warm[i] > 0.3f) cw++; }
+                Summary = $"stars {cs}px, glowing lights {cm}px, warm/fire {cw}px";
                 _active = new bool[_n];
                 for (int i = 0; i < _n; i++)
                     _active[i] = _stars[i] > 0 || _starGlow[i] > 0.002f || _moon[i] > 0 || _moonHalo[i] > 0.002f || _warm[i] > 0.002f || _warmGlow[i] > 0.002f;
@@ -322,23 +334,24 @@ namespace RetroBatMarqueeManager.Application.Services
                         if (_doStars && (_stars[p] > 0 || _starGlow[p] > 0.002f))
                         {
                             float tw = (float)(0.5 + 0.5 * Math.Sin(_starSpeed[p] * a + _starPhase[p]));
-                            float dim = 1f - _stars[p] * 0.55f * (1f - tw);
-                            float add = _stars[p] * tw * 70f + _starGlow[p] * tw * 60f;
+                            float dim = 1f - _stars[p] * Math.Min(0.85f, 0.45f * _k) * (1f - tw);
+                            float add = _stars[p] * tw * 70f * _k + _starGlow[p] * tw * 60f * _k;
                             b = b * dim + add; g = g * dim + add; r = r * dim + add;
                         }
                         if (_doMoon && (_moon[p] > 0 || _moonHalo[p] > 0.002f))
                         {
-                            float halo = _moonHalo[p] * (35f + 55f * pulse);
+                            float lp = (float)(0.5 + 0.5 * Math.Sin(a + _moonPhase[p]));
+                            float halo = _moonHalo[p] * (35f + 55f * lp) * _k;
                             b += halo * 0.85f; g += halo * 0.97f; r += halo * 1.0f;
-                            float gain = 1f + _moon[p] * 0.06f * pulse;
+                            float gain = 1f + _moon[p] * 0.06f * lp * _k;
                             b *= gain; g *= gain; r *= gain;
                         }
                         if (_doFire && (_warm[p] > 0.002f || _warmGlow[p] > 0.002f))
                         {
                             float ph = _warmPhase[p];
-                            float fl = 1f + 0.22f * (float)Math.Sin(3 * a + ph) + 0.12f * (float)Math.Sin(5 * a + 1.7 * ph);
+                            float fl = 1f + _k * (0.22f * (float)Math.Sin(3 * a + ph) + 0.12f * (float)Math.Sin(5 * a + 1.7 * ph));
                             float gain = 1f + _warm[p] * (fl - 1f) * stutter;
-                            float glow = _warmGlow[p] * (45f + 30f * (float)Math.Sin(3 * a + ph)) * stutter;
+                            float glow = _warmGlow[p] * (45f + 30f * (float)Math.Sin(3 * a + ph)) * _k * stutter;
                             b = b * gain + glow * 0.2f; g = g * gain + glow * 0.55f; r = r * gain + glow * 1.0f;
                         }
 
