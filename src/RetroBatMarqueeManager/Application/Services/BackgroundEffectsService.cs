@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v5";
+        private const string Version = "v6";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -255,8 +255,18 @@ namespace RetroBatMarqueeManager.Application.Services
                     var bluish = new float[_n];
                     for (int i = 0; i < _n; i++) bluish[i] = plain[i * 3] - plain[i * 3 + 2];
                     bluish = Gauss(bluish, w, h, 10);
+                    // EN: an open sky is smooth: measure how much the picture (without tiny dots) varies around each pixel.
+                    var om = Gauss(opened, w, h, 8);
+                    var o2 = new float[_n];
+                    for (int i = 0; i < _n; i++) o2[i] = opened[i] * opened[i];
+                    o2 = Gauss(o2, w, h, 8);
                     var score = new float[_n];
-                    for (int i = 0; i < _n; i++) { float t = gray[i] - opened[i]; score[i] = (t > 20 && gray[i] > 80 && surround[i] < 75 && bluish[i] > 8 && satArr[i] < 120) ? t : 0f; }
+                    for (int i = 0; i < _n; i++)
+                    {
+                        float t = gray[i] - opened[i];
+                        float sd = (float)Math.Sqrt(Math.Max(0f, o2[i] - om[i] * om[i]));
+                        score[i] = (t > 20 && gray[i] > 80 && surround[i] < 75 && bluish[i] > 8 && satArr[i] < 120 && sd < 9f && (i / w) < _h * 0.7f) ? t : 0f;
+                    }
                     float thr = TopThreshold(score, (int)(_n * 0.004), 20f);
                     var s0 = new float[_n];
                     for (int i = 0; i < _n; i++) s0[i] = score[i] >= thr && score[i] > 0 ? 1f : 0f;
@@ -323,6 +333,11 @@ namespace RetroBatMarqueeManager.Application.Services
                     float wthr = TopThreshold(wv, (int)(_n * 0.03), 0f);
                     for (int i = 0; i < _n; i++) if (wv[i] < wthr) warm[i] = 0f;
                     warm = MinMax(MinMax(warm, w, h, 1, false), w, h, 1, true);
+                    // EN: only real flames: join nearby warm pixels, drop small isolated bits (lamps, rivets, paint), keep the originals inside.
+                    var joined = MinMax(warm, w, h, 4, true);
+                    var bigOnly = new float[_n];
+                    FilterComponents(joined, w, h, 900, int.MaxValue, bigOnly);
+                    for (int i = 0; i < _n; i++) if (bigOnly[i] <= 0) warm[i] = 0f;
                     _warm = Gauss(warm, w, h, 1.2);
                     _warmGlow = Gauss(_warm, w, h, 14);
                     var rnd = RandomField(rng, _n);
