@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v2";
+        private const string Version = "v3";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -243,8 +243,11 @@ namespace RetroBatMarqueeManager.Application.Services
                 {
                     var opened = MinMax(MinMax(gray, w, h, 3, false), w, h, 3, true);
                     var surround = Gauss(gray, w, h, 14);
+                    var score = new float[_n];
+                    for (int i = 0; i < _n; i++) { float t = gray[i] - opened[i]; score[i] = (t > 20 && gray[i] > 80 && surround[i] < 140) ? t : 0f; }
+                    float thr = TopThreshold(score, (int)(_n * 0.004), 20f);
                     var s = new float[_n];
-                    for (int i = 0; i < _n; i++) s[i] = (gray[i] - opened[i] > 20 && gray[i] > 80 && surround[i] < 140) ? 1f : 0f;
+                    for (int i = 0; i < _n; i++) s[i] = score[i] >= thr && score[i] > 0 ? 1f : 0f;
                     s = MinMax(s, w, h, 1, true);
                     Array.Copy(s, _stars, _n);
                     _starGlow = Gauss(_stars, w, h, 3);
@@ -260,7 +263,9 @@ namespace RetroBatMarqueeManager.Application.Services
                     var big = new float[_n];
                     for (int i = 0; i < _n; i++) big[i] = (gray[i] - local[i] > 28 && gray[i] > 80) ? 1f : 0f;
                     big = MinMax(MinMax(big, w, h, 2, false), w, h, 2, true);
-                    FilterComponents(big, w, h, 300, 6000, _moon);
+                    var contrast = new float[_n];
+                    for (int i = 0; i < _n; i++) contrast[i] = Math.Max(0f, gray[i] - local[i]);
+                    TopComponents(big, w, h, 300, 5000, 5, contrast, _moon);
                     _moonHalo = Gauss(_moon, w, h, 22);
                     var zr = Normalize(Gauss(RandomField(rng, _n), w, h, 40));
                     for (int i = 0; i < _n; i++) _moonPhase[i] = zr[i] * 1.6f; // lights pulse out of step with each other
@@ -284,6 +289,10 @@ namespace RetroBatMarqueeManager.Application.Services
                         float h8 = hue / 2f; // OpenCV style 0..180
                         if (h8 >= 3 && h8 <= 32 && _moon[i] <= 0) warm[i] = 1f;
                     }
+                    var wv = new float[_n];
+                    for (int i = 0; i < _n; i++) wv[i] = warm[i] > 0 ? Math.Max(plain[i * 3], Math.Max(plain[i * 3 + 1], plain[i * 3 + 2])) : 0f;
+                    float wthr = TopThreshold(wv, (int)(_n * 0.03), 0f);
+                    for (int i = 0; i < _n; i++) if (wv[i] < wthr) warm[i] = 0f;
                     warm = MinMax(MinMax(warm, w, h, 1, false), w, h, 1, true);
                     _warm = Gauss(warm, w, h, 1.2);
                     _warmGlow = Gauss(_warm, w, h, 14);
@@ -335,7 +344,7 @@ namespace RetroBatMarqueeManager.Application.Services
                         {
                             float tw = (float)(0.5 + 0.5 * Math.Sin(_starSpeed[p] * a + _starPhase[p]));
                             float dim = 1f - _stars[p] * Math.Min(0.85f, 0.45f * _k) * (1f - tw);
-                            float add = _stars[p] * tw * 70f * _k + _starGlow[p] * tw * 60f * _k;
+                            float add = _stars[p] * tw * 110f * _k + _starGlow[p] * tw * 90f * _k;
                             b = b * dim + add; g = g * dim + add; r = r * dim + add;
                         }
                         if (_doMoon && (_moon[p] > 0 || _moonHalo[p] > 0.002f))
@@ -349,9 +358,9 @@ namespace RetroBatMarqueeManager.Application.Services
                         if (_doFire && (_warm[p] > 0.002f || _warmGlow[p] > 0.002f))
                         {
                             float ph = _warmPhase[p];
-                            float fl = 1f + _k * (0.22f * (float)Math.Sin(3 * a + ph) + 0.12f * (float)Math.Sin(5 * a + 1.7 * ph));
+                            float fl = 1f + _k * 0.6f * (0.22f * (float)Math.Sin(3 * a + ph) + 0.12f * (float)Math.Sin(5 * a + 1.7 * ph));
                             float gain = 1f + _warm[p] * (fl - 1f) * stutter;
-                            float glow = _warmGlow[p] * (45f + 30f * (float)Math.Sin(3 * a + ph)) * _k * stutter;
+                            float glow = _warmGlow[p] * (30f + 20f * (float)Math.Sin(3 * a + ph)) * _k * stutter;
                             b = b * gain + glow * 0.2f; g = g * gain + glow * 0.55f; r = r * gain + glow * 1.0f;
                         }
 
@@ -361,6 +370,47 @@ namespace RetroBatMarqueeManager.Application.Services
                         outBuf[o + 2] = Clamp(_composed[o + 2] + (r - f0r) * keepLogo);
                     }
                 });
+            }
+
+            // Value of the keep-th highest entry (so that about "keep" entries are >= it); never below minValue.
+            private static float TopThreshold(float[] values, int keep, float minValue)
+            {
+                int count = 0;
+                foreach (var v in values) if (v > minValue) count++;
+                if (count <= keep || keep <= 0) return minValue;
+                var arr = new float[count]; int k = 0;
+                foreach (var v in values) if (v > minValue) arr[k++] = v;
+                Array.Sort(arr);
+                return arr[count - keep];
+            }
+
+            // Like FilterComponents but keeps only the maxCount areas with the highest summed score.
+            private static void TopComponents(float[] src, int w, int h, int minArea, int maxArea, int maxCount, float[] score, float[] dst)
+            {
+                var seen = new bool[src.Length];
+                var stack = new Stack<int>();
+                var members = new List<int>();
+                var found = new List<(double Score, int[] Pixels)>();
+                for (int start = 0; start < src.Length; start++)
+                {
+                    if (src[start] <= 0.5f || seen[start]) continue;
+                    members.Clear();
+                    stack.Push(start); seen[start] = true;
+                    while (stack.Count > 0)
+                    {
+                        int c = stack.Pop(); members.Add(c);
+                        int cx = c % w, cy = c / w;
+                        if (cx > 0 && src[c - 1] > 0.5f && !seen[c - 1]) { seen[c - 1] = true; stack.Push(c - 1); }
+                        if (cx < w - 1 && src[c + 1] > 0.5f && !seen[c + 1]) { seen[c + 1] = true; stack.Push(c + 1); }
+                        if (cy > 0 && src[c - w] > 0.5f && !seen[c - w]) { seen[c - w] = true; stack.Push(c - w); }
+                        if (cy < h - 1 && src[c + w] > 0.5f && !seen[c + w]) { seen[c + w] = true; stack.Push(c + w); }
+                    }
+                    if (members.Count < minArea || members.Count > maxArea) continue;
+                    double sum = 0; foreach (var m in members) sum += score[m];
+                    found.Add((sum, members.ToArray()));
+                }
+                found.Sort((a, b) => b.Score.CompareTo(a.Score));
+                for (int i = 0; i < Math.Min(maxCount, found.Count); i++) foreach (var m in found[i].Pixels) dst[m] = 1f;
             }
 
             private static byte Clamp(float v) => v <= 0 ? (byte)0 : v >= 255 ? (byte)255 : (byte)(v + 0.5f);
