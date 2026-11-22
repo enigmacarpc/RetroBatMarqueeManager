@@ -265,7 +265,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     big = MinMax(MinMax(big, w, h, 2, false), w, h, 2, true);
                     var contrast = new float[_n];
                     for (int i = 0; i < _n; i++) contrast[i] = Math.Max(0f, gray[i] - local[i]);
-                    TopComponents(big, w, h, 300, 5000, 5, contrast, _moon);
+                    TopComponents(big, w, h, 300, 5000, 8, contrast, _moon);
                     _moonHalo = Gauss(_moon, w, h, 22);
                     var zr = Normalize(Gauss(RandomField(rng, _n), w, h, 40));
                     for (int i = 0; i < _n; i++) _moonPhase[i] = zr[i] * 1.6f; // lights pulse out of step with each other
