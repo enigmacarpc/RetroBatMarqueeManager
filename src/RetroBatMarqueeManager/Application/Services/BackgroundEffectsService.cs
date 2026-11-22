@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v7";
+        private const string Version = "v8";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -218,7 +218,7 @@ namespace RetroBatMarqueeManager.Application.Services
         {
             private readonly int _w, _h, _n;
             private readonly byte[] _plain, _composed;
-            private readonly float[] _stars, _starGlow, _starPhase, _starSpeed, _moon, _moonHalo, _warm, _warmGlow, _warmPhase, _keep, _hot, _hotGlow, _hotPhase;
+            private readonly float[] _stars, _starGlow, _starPhase, _starSpeed, _moon, _moonHalo, _warm, _warmGlow, _warmPhase, _keep, _hot, _hotGlow, _hotPhase, _moonSoft, _moonSoftHalo;
             private readonly bool[] _active;
             private readonly bool _doStars, _doMoon, _doFire;
             private readonly float _k;
@@ -247,6 +247,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 _moon = new float[_n]; _moonHalo = new float[_n];
                 _warm = new float[_n]; _warmGlow = new float[_n]; _warmPhase = new float[_n];
                 _hot = new float[_n]; _hotGlow = new float[_n]; _hotPhase = new float[_n];
+                _moonSoft = new float[_n]; _moonSoftHalo = new float[_n];
 
                 if (stars)
                 {
@@ -306,6 +307,21 @@ namespace RetroBatMarqueeManager.Application.Services
                         double cnt = px.Length, bw = maxX - minX + 1, bh = maxY - minY + 1, aspect = bw / bh;
                         return ss / cnt <= 130 && sg / cnt >= 100 && sl / cnt >= 40 && aspect <= 2.0 && aspect >= 0.45;
                     });
+                    // EN: a bright light cut by the picture edge (moon at the top): gentle slow glow only, no pulsing size.
+                    TopComponents(big, w, h, 300, 20000, 2, contrast, _moonSoft, px =>
+                    {
+                        int minX = int.MaxValue, maxX = 0, minY = int.MaxValue, maxY = 0; double sg = 0, ss = 0, sl = 0;
+                        foreach (var q in px)
+                        {
+                            int qx = q % w, qy = q / w;
+                            if (qx < minX) minX = qx; if (qx > maxX) maxX = qx; if (qy < minY) minY = qy; if (qy > maxY) maxY = qy;
+                            sg += gray[q]; ss += satArr[q]; sl += contrast[q];
+                        }
+                        bool edge = minX <= 1 || minY <= 1 || maxX >= w - 2 || maxY >= h - 2;
+                        double cnt = px.Length;
+                        return edge && ss / cnt <= 130 && sg / cnt >= 140 && sl / cnt >= 40;
+                    });
+                    _moonSoftHalo = Gauss(_moonSoft, w, h, 30);
                     _moonHalo = Gauss(_moon, w, h, 22);
                     var zr = Normalize(Gauss(RandomField(rng, _n), w, h, 40));
                     for (int i = 0; i < _n; i++) _moonPhase[i] = zr[i] * 1.6f; // lights pulse out of step with each other
@@ -327,7 +343,7 @@ namespace RetroBatMarqueeManager.Application.Services
                         else hue = 60f * (((r - g) / d) + 4f);
                         if (hue < 0) hue += 360f;
                         float h8 = hue / 2f; // OpenCV style 0..180
-                        if (h8 >= 3 && h8 <= 32 && _moon[i] <= 0) warm[i] = 1f;
+                        if (h8 >= 3 && h8 <= 32 && _moon[i] <= 0 && _moonSoft[i] <= 0) warm[i] = 1f;
                     }
                     var wv = new float[_n];
                     for (int i = 0; i < _n; i++) wv[i] = warm[i] > 0 ? Math.Max(plain[i * 3], Math.Max(plain[i * 3 + 1], plain[i * 3 + 2])) : 0f;
@@ -360,18 +376,37 @@ namespace RetroBatMarqueeManager.Application.Services
                     {
                         float b = plain[i * 3], g = plain[i * 3 + 1], r = plain[i * 3 + 2];
                         float mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
-                        if (mx < 200 || r < g - 5 || r < b + 30) continue;       // bright and warm (red/orange/yellow), not cyan or white sky
+                        if (mx < 110 || r < g - 5 || r < b + 30) continue;       // warm (red/orange/yellow), not cyan or white sky
                         float sat = 255f * (mx - mn) / mx;
                         if (sat < 50) continue;
                         if (g > r + 5) continue;
-                        if (_moon[i] > 0) continue;
-                        hot[i] = 1f;
+                        if (_moon[i] > 0 || _moonSoft[i] > 0) continue;
+                        hot[i] = Math.Max(r, g);
                     }
+                    // EN: bright in absolute terms, or bright compared with the strongest warm spot in its own part of the picture (shadowed flames).
+                    int tw = Math.Max(1, w / 8), th = Math.Max(1, h / 2);
+                    var tileMax = new float[8 * 2 + 16];
+                    for (int i = 0; i < _n; i++)
+                    {
+                        if (hot[i] <= 0) continue;
+                        int t = Math.Min(7, (i % w) / tw) + 8 * Math.Min(1, (i / w) / th);
+                        if (hot[i] > tileMax[t]) tileMax[t] = hot[i];
+                    }
+                    for (int i = 0; i < _n; i++)
+                    {
+                        if (hot[i] <= 0) continue;
+                        int t = Math.Min(7, (i % w) / tw) + 8 * Math.Min(1, (i / w) / th);
+                        hot[i] = (hot[i] >= 200 || (hot[i] >= 0.72f * tileMax[t] && hot[i] >= 120)) ? hot[i] : 0f;
+                    }
+                    // EN: never more than about 6% of the picture, brightest first (keeps red-everywhere pictures calm).
+                    float hthr = TopThreshold(hot, (int)(_n * 0.06), 0f);
+                    for (int i = 0; i < _n; i++) hot[i] = hot[i] > 0 && hot[i] >= hthr ? 1f : 0f;
                     hot = MinMax(MinMax(hot, w, h, 1, false), w, h, 1, true);
                     var hotKept = new float[_n];
                     FilterComponents(hot, w, h, 25, 60000, hotKept);
                     _hot = Gauss(hotKept, w, h, 1.0);
                     _hotGlow = Gauss(hotKept, w, h, 9);
+                    for (int i = 0; i < _n; i++) _hotGlow[i] = Math.Min(1f, _hotGlow[i] * 3f); // small flashes (turrets) get a full-strength glow
                     var zh = Normalize(Gauss(RandomField(rng, _n), w, h, 10));
                     for (int i = 0; i < _n; i++) _hotPhase[i] = zh[i] * 3.0f;
                 }
@@ -388,7 +423,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 Summary = $"stars {cs}px, glowing lights {cm}px, warm/fire {cw}px, hot spots {ch}px";
                 _active = new bool[_n];
                 for (int i = 0; i < _n; i++)
-                    _active[i] = _stars[i] > 0 || _starGlow[i] > 0.002f || _moon[i] > 0 || _moonHalo[i] > 0.002f || _warm[i] > 0.002f || _warmGlow[i] > 0.002f || _hot[i] > 0.002f || _hotGlow[i] > 0.002f;
+                    _active[i] = _stars[i] > 0 || _starGlow[i] > 0.002f || _moon[i] > 0 || _moonHalo[i] > 0.002f || _warm[i] > 0.002f || _warmGlow[i] > 0.002f || _hot[i] > 0.002f || _hotGlow[i] > 0.002f || _moonSoftHalo[i] > 0.002f;
             }
 
             public void RenderFrame(int i, int frames, byte[] outBuf)
@@ -424,6 +459,12 @@ namespace RetroBatMarqueeManager.Application.Services
                             float gain = 1f + _moon[p] * 0.06f * lp * _k;
                             b *= gain; g *= gain; r *= gain;
                         }
+                        if (_doMoon && _moonSoftHalo[p] > 0.002f)
+                        {
+                            float sp = (float)(0.5 + 0.5 * Math.Sin(a));
+                            float halo = _moonSoftHalo[p] * (20f + 40f * sp) * _k;
+                            b += halo * 0.85f; g += halo * 0.95f; r += halo;
+                        }
                         if (_doFire && (_warm[p] > 0.002f || _warmGlow[p] > 0.002f))
                         {
                             float ph = _warmPhase[p];
@@ -438,7 +479,7 @@ namespace RetroBatMarqueeManager.Application.Services
                             float hp = _hotPhase[p];
                             float fl = 0.5f + 0.5f * (0.6f * (float)Math.Sin(7 * a + hp) + 0.4f * (float)Math.Sin(13 * a + 2 * hp));
                             float glow = _hotGlow[p] * (25f + 55f * fl) * _k * stutter;
-                            float gain = 1f + _hot[p] * 0.15f * fl * _k;
+                            float gain = 1f + _hot[p] * 0.25f * fl * _k;
                             b = b * gain + glow * 0.25f; g = g * gain + glow * 0.6f; r = r * gain + glow * 1.0f;
                         }
 
