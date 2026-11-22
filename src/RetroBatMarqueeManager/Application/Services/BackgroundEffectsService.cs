@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v3";
+        private const string Version = "v4";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -235,6 +235,14 @@ namespace RetroBatMarqueeManager.Application.Services
                 var gray = new float[_n];
                 for (int i = 0; i < _n; i++) gray[i] = 0.114f * plain[i * 3] + 0.587f * plain[i * 3 + 1] + 0.299f * plain[i * 3 + 2];
 
+                var satArr = new float[_n];
+                for (int i = 0; i < _n; i++)
+                {
+                    float b0 = plain[i * 3], g0 = plain[i * 3 + 1], r0 = plain[i * 3 + 2];
+                    float mx0 = Math.Max(r0, Math.Max(g0, b0)), mn0 = Math.Min(r0, Math.Min(g0, b0));
+                    satArr[i] = mx0 > 0 ? 255f * (mx0 - mn0) / mx0 : 0f;
+                }
+
                 _stars = new float[_n]; _starGlow = new float[_n]; _starPhase = new float[_n]; _starSpeed = new float[_n];
                 _moon = new float[_n]; _moonHalo = new float[_n];
                 _warm = new float[_n]; _warmGlow = new float[_n]; _warmPhase = new float[_n];
@@ -244,7 +252,7 @@ namespace RetroBatMarqueeManager.Application.Services
                     var opened = MinMax(MinMax(gray, w, h, 3, false), w, h, 3, true);
                     var surround = Gauss(gray, w, h, 14);
                     var score = new float[_n];
-                    for (int i = 0; i < _n; i++) { float t = gray[i] - opened[i]; score[i] = (t > 20 && gray[i] > 80 && surround[i] < 140) ? t : 0f; }
+                    for (int i = 0; i < _n; i++) { float t = gray[i] - opened[i]; score[i] = (t > 20 && gray[i] > 80 && surround[i] < 140 && satArr[i] < 120) ? t : 0f; }
                     float thr = TopThreshold(score, (int)(_n * 0.004), 20f);
                     var s = new float[_n];
                     for (int i = 0; i < _n; i++) s[i] = score[i] >= thr && score[i] > 0 ? 1f : 0f;
@@ -265,7 +273,19 @@ namespace RetroBatMarqueeManager.Application.Services
                     big = MinMax(MinMax(big, w, h, 2, false), w, h, 2, true);
                     var contrast = new float[_n];
                     for (int i = 0; i < _n; i++) contrast[i] = Math.Max(0f, gray[i] - local[i]);
-                    TopComponents(big, w, h, 300, 5000, 8, contrast, _moon);
+                    TopComponents(big, w, h, 300, 5000, 8, contrast, _moon, px =>
+                    {
+                        // EN: a real light is pale (not strongly coloured: those are fire), roundish (not a streak), and clearly bright.
+                        int minX = int.MaxValue, maxX = 0, minY = int.MaxValue, maxY = 0; double sg = 0, ss = 0, sl = 0;
+                        foreach (var q in px)
+                        {
+                            int qx = q % w, qy = q / w;
+                            if (qx < minX) minX = qx; if (qx > maxX) maxX = qx; if (qy < minY) minY = qy; if (qy > maxY) maxY = qy;
+                            sg += gray[q]; ss += satArr[q]; sl += contrast[q];
+                        }
+                        double cnt = px.Length, bw = maxX - minX + 1, bh = maxY - minY + 1, aspect = bw / bh;
+                        return ss / cnt <= 130 && sg / cnt >= 100 && sl / cnt >= 40 && aspect <= 2.0 && aspect >= 0.45;
+                    });
                     _moonHalo = Gauss(_moon, w, h, 22);
                     var zr = Normalize(Gauss(RandomField(rng, _n), w, h, 40));
                     for (int i = 0; i < _n; i++) _moonPhase[i] = zr[i] * 1.6f; // lights pulse out of step with each other
@@ -385,7 +405,7 @@ namespace RetroBatMarqueeManager.Application.Services
             }
 
             // Like FilterComponents but keeps only the maxCount areas with the highest summed score.
-            private static void TopComponents(float[] src, int w, int h, int minArea, int maxArea, int maxCount, float[] score, float[] dst)
+            private static void TopComponents(float[] src, int w, int h, int minArea, int maxArea, int maxCount, float[] score, float[] dst, Func<int[], bool>? accept = null)
             {
                 var seen = new bool[src.Length];
                 var stack = new Stack<int>();
@@ -406,8 +426,10 @@ namespace RetroBatMarqueeManager.Application.Services
                         if (cy < h - 1 && src[c + w] > 0.5f && !seen[c + w]) { seen[c + w] = true; stack.Push(c + w); }
                     }
                     if (members.Count < minArea || members.Count > maxArea) continue;
-                    double sum = 0; foreach (var m in members) sum += score[m];
-                    found.Add((sum, members.ToArray()));
+                    var arr = members.ToArray();
+                    if (accept != null && !accept(arr)) continue;
+                    double sum = 0; foreach (var m in arr) sum += score[m];
+                    found.Add((sum, arr));
                 }
                 found.Sort((a, b) => b.Score.CompareTo(a.Score));
                 for (int i = 0; i < Math.Min(maxCount, found.Count); i++) foreach (var m in found[i].Pixels) dst[m] = 1f;
