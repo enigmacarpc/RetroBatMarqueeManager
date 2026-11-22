@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v8";
+        private const string Version = "v9";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -267,9 +267,9 @@ namespace RetroBatMarqueeManager.Application.Services
                     {
                         float t = gray[i] - opened[i];
                         float sd = (float)Math.Sqrt(Math.Max(0f, o2[i] - om[i] * om[i]));
-                        score[i] = (t > 20 && gray[i] > 80 && surround[i] < 75 && bluish[i] > 8 && satArr[i] < 120 && sd < 9f && (i / w) < _h * 0.7f) ? t : 0f;
+                        score[i] = (t > 8 && gray[i] > 45 && surround[i] < 75 && bluish[i] > 8 && satArr[i] < 120 && sd < 9f && (i / w) < _h * 0.7f) ? t : 0f;
                     }
-                    float thr = TopThreshold(score, (int)(_n * 0.004), 20f);
+                    float thr = TopThreshold(score, (int)(_n * 0.004), 8f);
                     var s0 = new float[_n];
                     for (int i = 0; i < _n; i++) s0[i] = score[i] >= thr && score[i] > 0 ? 1f : 0f;
                     // EN: a star is a tiny dot; streaks (lightning, edges) are dropped.
@@ -319,9 +319,10 @@ namespace RetroBatMarqueeManager.Application.Services
                         }
                         bool edge = minX <= 1 || minY <= 1 || maxX >= w - 2 || maxY >= h - 2;
                         double cnt = px.Length;
-                        return edge && ss / cnt <= 130 && sg / cnt >= 140 && sl / cnt >= 40;
+                        return edge && ss / cnt <= 130 && sg / cnt >= 90 && sl / cnt >= 30;
                     });
                     _moonSoftHalo = Gauss(_moonSoft, w, h, 30);
+                    for (int i = 0; i < _n; i++) _moonSoftHalo[i] = Math.Min(1f, _moonSoftHalo[i] * 4f);
                     _moonHalo = Gauss(_moon, w, h, 22);
                     var zr = Normalize(Gauss(RandomField(rng, _n), w, h, 40));
                     for (int i = 0; i < _n; i++) _moonPhase[i] = zr[i] * 1.6f; // lights pulse out of step with each other
@@ -399,16 +400,29 @@ namespace RetroBatMarqueeManager.Application.Services
                         hot[i] = (hot[i] >= 200 || (hot[i] >= 0.72f * tileMax[t] && hot[i] >= 120)) ? hot[i] : 0f;
                     }
                     // EN: never more than about 6% of the picture, brightest first (keeps red-everywhere pictures calm).
-                    float hthr = TopThreshold(hot, (int)(_n * 0.06), 0f);
+                    float hthr = TopThreshold(hot, (int)(_n * 0.04), 0f);
                     for (int i = 0; i < _n; i++) hot[i] = hot[i] > 0 && hot[i] >= hthr ? 1f : 0f;
-                    hot = MinMax(MinMax(hot, w, h, 1, false), w, h, 1, true);
                     var hotKept = new float[_n];
                     FilterComponents(hot, w, h, 25, 60000, hotKept);
-                    _hot = Gauss(hotKept, w, h, 1.0);
-                    _hotGlow = Gauss(hotKept, w, h, 9);
-                    for (int i = 0; i < _n; i++) _hotGlow[i] = Math.Min(1f, _hotGlow[i] * 3f); // small flashes (turrets) get a full-strength glow
+                    // EN: big flame areas glow softly (and not where the fire effect already works); small flashes (turrets, sparks) get a full-strength glow.
+                    var bigHot = new float[_n];
+                    FilterComponents(hotKept, w, h, 600, int.MaxValue, bigHot);
+                    var smallHot = new float[_n];
+                    for (int i = 0; i < _n; i++)
+                    {
+                        if (bigHot[i] > 0 && _warm[i] > 0.1f) bigHot[i] = 0f;
+                        smallHot[i] = hotKept[i] > 0 && bigHot[i] <= 0 && !(_warm[i] > 0.1f) ? 1f : 0f;
+                    }
+                    var sg1 = Gauss(smallHot, w, h, 1.0); var bg1 = Gauss(bigHot, w, h, 1.0);
+                    var sg9 = Gauss(smallHot, w, h, 9); var bg9 = Gauss(bigHot, w, h, 9);
                     var zh = Normalize(Gauss(RandomField(rng, _n), w, h, 10));
-                    for (int i = 0; i < _n; i++) _hotPhase[i] = zh[i] * 3.0f;
+                    var zb = Normalize(Gauss(RandomField(rng, _n), w, h, 60));
+                    for (int i = 0; i < _n; i++)
+                    {
+                        _hot[i] = sg1[i] + 0.25f * bg1[i];
+                        _hotGlow[i] = Math.Min(1f, Math.Min(1f, sg9[i] * 3f) + 0.4f * bg9[i]);
+                        _hotPhase[i] = sg9[i] > 0.05f ? zh[i] * 3.0f : zb[i] * 0.8f;
+                    }
                 }
 
                 // EN: where the composed picture differs from the plain background the logo is drawn: keep that untouched.
@@ -462,8 +476,10 @@ namespace RetroBatMarqueeManager.Application.Services
                         if (_doMoon && _moonSoftHalo[p] > 0.002f)
                         {
                             float sp = (float)(0.5 + 0.5 * Math.Sin(a));
-                            float halo = _moonSoftHalo[p] * (20f + 40f * sp) * _k;
+                            float halo = _moonSoftHalo[p] * (12f + 28f * sp) * _k;
                             b += halo * 0.85f; g += halo * 0.95f; r += halo;
+                            float mg = 1f + _moonSoft[p] * 0.2f * sp * _k; // the moon itself breathes brighter
+                            b *= mg; g *= mg; r *= mg;
                         }
                         if (_doFire && (_warm[p] > 0.002f || _warmGlow[p] > 0.002f))
                         {
