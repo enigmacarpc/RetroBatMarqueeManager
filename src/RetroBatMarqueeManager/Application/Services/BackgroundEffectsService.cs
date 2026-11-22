@@ -16,7 +16,7 @@ namespace RetroBatMarqueeManager.Application.Services
 
         private const int Fps = 25;
         private const int Seconds = 6;
-        private const string Version = "v6";
+        private const string Version = "v7";
 
         private readonly IConfigService _config;
         private readonly ImageConversionService _img;
@@ -218,7 +218,7 @@ namespace RetroBatMarqueeManager.Application.Services
         {
             private readonly int _w, _h, _n;
             private readonly byte[] _plain, _composed;
-            private readonly float[] _stars, _starGlow, _starPhase, _starSpeed, _moon, _moonHalo, _warm, _warmGlow, _warmPhase, _keep;
+            private readonly float[] _stars, _starGlow, _starPhase, _starSpeed, _moon, _moonHalo, _warm, _warmGlow, _warmPhase, _keep, _hot, _hotGlow, _hotPhase;
             private readonly bool[] _active;
             private readonly bool _doStars, _doMoon, _doFire;
             private readonly float _k;
@@ -246,6 +246,7 @@ namespace RetroBatMarqueeManager.Application.Services
                 _stars = new float[_n]; _starGlow = new float[_n]; _starPhase = new float[_n]; _starSpeed = new float[_n];
                 _moon = new float[_n]; _moonHalo = new float[_n];
                 _warm = new float[_n]; _warmGlow = new float[_n]; _warmPhase = new float[_n];
+                _hot = new float[_n]; _hotGlow = new float[_n]; _hotPhase = new float[_n];
 
                 if (stars)
                 {
@@ -351,6 +352,30 @@ namespace RetroBatMarqueeManager.Application.Services
                     for (int i = 0; i < _n; i++) if (bigWarm[i] > 0) _warmPhase[i] = 0;
                 }
 
+                if (fire)
+                {
+                    // EN: hot spots = muzzle flashes, engine flames, bright flame cores (yellow-white): flicker their glow, however small.
+                    var hot = new float[_n];
+                    for (int i = 0; i < _n; i++)
+                    {
+                        float b = plain[i * 3], g = plain[i * 3 + 1], r = plain[i * 3 + 2];
+                        float mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));
+                        if (mx < 200 || r < g - 5 || r < b + 30) continue;       // bright and warm (red/orange/yellow), not cyan or white sky
+                        float sat = 255f * (mx - mn) / mx;
+                        if (sat < 50) continue;
+                        if (g > r + 5) continue;
+                        if (_moon[i] > 0) continue;
+                        hot[i] = 1f;
+                    }
+                    hot = MinMax(MinMax(hot, w, h, 1, false), w, h, 1, true);
+                    var hotKept = new float[_n];
+                    FilterComponents(hot, w, h, 25, 60000, hotKept);
+                    _hot = Gauss(hotKept, w, h, 1.0);
+                    _hotGlow = Gauss(hotKept, w, h, 9);
+                    var zh = Normalize(Gauss(RandomField(rng, _n), w, h, 10));
+                    for (int i = 0; i < _n; i++) _hotPhase[i] = zh[i] * 3.0f;
+                }
+
                 // EN: where the composed picture differs from the plain background the logo is drawn: keep that untouched.
                 _keep = new float[_n];
                 for (int i = 0; i < _n; i++)
@@ -358,12 +383,12 @@ namespace RetroBatMarqueeManager.Application.Services
                     int d = Math.Abs(composed[i * 3] - plain[i * 3]) + Math.Abs(composed[i * 3 + 1] - plain[i * 3 + 1]) + Math.Abs(composed[i * 3 + 2] - plain[i * 3 + 2]);
                     _keep[i] = Math.Min(1f, d / 20f);
                 }
-                int cs = 0, cm = 0, cw = 0;
-                for (int i = 0; i < _n; i++) { if (_stars[i] > 0) cs++; if (_moon[i] > 0) cm++; if (_warm[i] > 0.3f) cw++; }
-                Summary = $"stars {cs}px, glowing lights {cm}px, warm/fire {cw}px";
+                int cs = 0, cm = 0, cw = 0, ch = 0;
+                for (int i = 0; i < _n; i++) { if (_stars[i] > 0) cs++; if (_moon[i] > 0) cm++; if (_warm[i] > 0.3f) cw++; if (_hot[i] > 0.3f) ch++; }
+                Summary = $"stars {cs}px, glowing lights {cm}px, warm/fire {cw}px, hot spots {ch}px";
                 _active = new bool[_n];
                 for (int i = 0; i < _n; i++)
-                    _active[i] = _stars[i] > 0 || _starGlow[i] > 0.002f || _moon[i] > 0 || _moonHalo[i] > 0.002f || _warm[i] > 0.002f || _warmGlow[i] > 0.002f;
+                    _active[i] = _stars[i] > 0 || _starGlow[i] > 0.002f || _moon[i] > 0 || _moonHalo[i] > 0.002f || _warm[i] > 0.002f || _warmGlow[i] > 0.002f || _hot[i] > 0.002f || _hotGlow[i] > 0.002f;
             }
 
             public void RenderFrame(int i, int frames, byte[] outBuf)
@@ -406,6 +431,15 @@ namespace RetroBatMarqueeManager.Application.Services
                             float gain = 1f + _warm[p] * (fl - 1f) * stutter;
                             float glow = _warmGlow[p] * (30f + 20f * (float)Math.Sin(3 * a + ph)) * _k * stutter;
                             b = b * gain + glow * 0.2f; g = g * gain + glow * 0.55f; r = r * gain + glow * 1.0f;
+                        }
+
+                        if (_doFire && (_hot[p] > 0.002f || _hotGlow[p] > 0.002f))
+                        {
+                            float hp = _hotPhase[p];
+                            float fl = 0.5f + 0.5f * (0.6f * (float)Math.Sin(7 * a + hp) + 0.4f * (float)Math.Sin(13 * a + 2 * hp));
+                            float glow = _hotGlow[p] * (25f + 55f * fl) * _k * stutter;
+                            float gain = 1f + _hot[p] * 0.15f * fl * _k;
+                            b = b * gain + glow * 0.25f; g = g * gain + glow * 0.6f; r = r * gain + glow * 1.0f;
                         }
 
                         int o = p * 3;
